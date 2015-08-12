@@ -1,0 +1,26 @@
+{
+  "name": "html-mvc",
+  "version": "0.1.0",
+  "authors": [
+    "Derek Gray <dgray90@live.com>"
+  ],
+  "description": "Extends HTML to let all server languages become isomorphic",
+  "keywords": [
+    "isomorphic",
+    "mvc"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "devDependencies": {
+    "jasmine": "~2.3.4"
+  },
+  "dependencies": {
+    "urlsearchparams": "~0.1.1"
+  }
+}
