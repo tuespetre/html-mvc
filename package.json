@@ -1,0 +1,29 @@
+{
+  "name": "html-mvc",
+  "version": "0.1.0",
+  "private": true,
+  "description": "mvc for html",
+  "main": " ",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tuespetre/html-mvc.git"
+  },
+  "keywords": [
+    "html",
+    "mvc",
+    "spa"
+  ],
+  "author": "Derek Gray <dgray90@live.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tuespetre/html-mvc/issues"
+  },
+  "homepage": "https://github.com/tuespetre/html-mvc#readme",
+  "devDependencies": {
+    "gulp": "^3.9.0",
+    "gulp-concat": "^2.6.0"
+  }
+}

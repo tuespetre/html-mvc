@@ -1,3 +1,30 @@
+describe('multipart/json parsing', function () {
+
+  it('should parse content type headers with quotes', function() {
+    var unquotedHeader = 'application/json; model="my-model"';    
+    var result = parseContentTypeHeader(unquotedHeader);
+    expect(result.type).toBe('application/json');
+    expect(result.parameters['model']).toBeDefined();
+    expect(result.parameters['model']).toBe('my-model');
+  });
+
+  it('should parse content type headers without quotes', function() {
+    var quotedHeader = 'application/json;model=my-model';   
+    var result = parseContentTypeHeader(quotedHeader);
+    expect(result.type).toBe('application/json');
+    expect(result.parameters['model']).toBeDefined();
+    expect(result.parameters['model']).toBe('my-model');
+  });
+
+  it('should parse header sections', function() {
+    var headerSection = 'Content-Type: application/json;model=my-model \r\n X-Other-Header: Some Value';
+    var result = parseHeaderSection(headerSection);
+    expect(result['Content-Type']).toBe('application/json;model=my-model');
+    expect(result['X-Other-Header']).toBe('Some Value');
+  });
+
+});
+
 describe("mvc", function () {
   var _mvc;
   var _data;
@@ -31,9 +58,9 @@ describe("mvc", function () {
 
     describe("`modelStore`", function () {
 
-      it("should return undefined when an undefined model is requested", function () {
+      it("should return a model when an undefined model is requested", function () {
         var model = _mvc.getModel('non-existent');
-        expect(model).toBeUndefined();
+        expect(model).toBeDefined();
       });
 
       it("should return a model when a defined model is requested", function () {
@@ -64,7 +91,7 @@ describe("mvc", function () {
 
     describe("`model` / `record`", function () {
 
-      it("should allow initialization of new data for the entire record", function () {
+      it("should allow initialization of new data", function () {
         var _model, _record1, _record2;
 
         _mvc.defineModel('existent');
@@ -78,6 +105,26 @@ describe("mvc", function () {
         expect(_record2.value('Hello')).toBe('World');
       });
 
+      it('should allow re-initialization of new data', function () {
+        var _model, _record1, _record2, _record3, _newData;
+
+        _mvc.defineModel('existent');
+        _model = _mvc.getModel('existent');
+        _record1 = _model.record();
+        _model.initialize(_data);
+        _record2 = _model.record();
+        _newData = Object.create(_data);
+        _newData.Hello = 'Goodbye';
+        _model.initialize(_newData);
+        _record3 = _mvc.getModel('existent').record();
+        
+
+        expect(_record1).not.toBe(_record2);
+        expect(_record1.value('Hello')).toBeUndefined();
+        expect(_record2.value('Hello')).toBe('World');
+        expect(_record3.value('Hello')).toBe('Goodbye');
+      });
+
       it("should allow merging of new data without losing all record references", function () {
         var _model, _record1, _scope1, _each2, _record2, _scope2, _each2;
 
@@ -87,16 +134,16 @@ describe("mvc", function () {
         _record1 = _model.record();
         _scope1 = _record1.scope('Yeah');
         _each1 = _record1.collection('Items');
-        _model.merge({ 'Yo': { 'Sup': 'Bruh' }, 'Items': [{ Name: 'Guitar' }] });
+        _model.merge({ 'Hello': 'Goodbye', 'Yo': { 'Sup': 'Bruh' }, 'Items': [{ Name: 'Guitar' }] });
         _record2 = _model.record();
         _scope2 = _record2.scope('Yeah');
         _each2 = _record2.collection('Items');
 
         expect(_record1).not.toBe(_record2);
+        expect(_record2.value('Hello')).toBe('Goodbye');
         expect(_scope1).toBe(_scope2);
         expect(_scope1.value('What')).toBe('Ok');
         expect(_model.record().scope('Yo').value('Sup')).toBe('Bruh');
-
         expect(_each1).not.toBe(_each2);
         expect(_each1[0]).toBe(_each2[0]);
         expect(_each1[3]).toBeUndefined();
