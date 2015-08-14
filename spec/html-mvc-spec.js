@@ -422,7 +422,7 @@ describe("mvc", function () {
 
       describe('`bindtext`', function() {
       
-        it ('should bind to textContent', function() {
+        it('should bind to textContent', function() {
           var _model, _view, _element;
 
           _mvc.defineModel('test');
@@ -442,7 +442,7 @@ describe("mvc", function () {
 
       describe('`bindhtml`', function() {
       
-        it ('should bind to innerHTML', function() {
+        it('should bind to innerHTML', function() {
           var _model, _view, _element;
 
           _mvc.defineModel('test');
@@ -581,7 +581,7 @@ describe("mvc", function () {
 
       describe('`bindnone`', function () {
         
-        it ('should skip binding for elements and descendants', function() {
+        it('should skip binding for elements and descendants', function() {
           var _model, _view, _branch1, _branch2, _branch3, _element;
 
           _mvc.defineModel('test');
@@ -618,7 +618,7 @@ describe("mvc", function () {
 
       describe('`bindattr`', function () {
         
-        it ('should bind attributes except `bindattr-*`', function() {
+        it('should bind attributes except `bindattr-*`', function() {
           var _model, _view, _element;
 
           _mvc.defineModel('test');
@@ -635,7 +635,7 @@ describe("mvc", function () {
           expect(_element.getAttribute('class')).toBe('World');
         });
         
-        it ('should skip binding `name`, `outer`, `model`, and `scope` for views', function() {
+        it('should skip binding `name`, `outer`, `model`, and `scope` for views', function() {
           var _model, _view;
 
           _mvc.defineModel('test');
@@ -657,6 +657,42 @@ describe("mvc", function () {
           expect(_view.getAttribute('outer')).toBe('layout');
           expect(_view.hasAttribute('model')).toBe(false);
           expect(_view.hasAttribute('scope')).toBe(false);
+        });
+
+        it('should map `bindattr-value` to IDL `value` where present', function() {
+          var _view, _model, _input;
+
+          // 'value'
+          _view = _elem('view');
+          _input = _elem('input');
+          _input.type = 'input';
+          _input.value = 'World';
+          _input.setAttribute('bindattr-value', 'Hello');
+          _view.appendChild(_input);
+          _model = _mvc.getModel('test');
+          _data.Hello = 'Everybody';
+          _model.initialize(_data);
+          _view.bind(_model.record());
+
+          expect(_input.value).toBe('Everybody');
+        });
+
+        it('should map `bindattr-checked` to IDL `checked` where present', function() {
+          var _view, _model, _input;
+
+          // 'value'
+          _view = _elem('view');
+          _input = _elem('input');
+          _input.type = 'checkbox';
+          _input.checked = false;
+          _input.setAttribute('bindattr-checked', 'Hello');
+          _view.appendChild(_input);
+          _model = _mvc.getModel('test');
+          _data.Hello = true;
+          _model.initialize(_data);
+          _view.bind(_model.record());
+
+          expect(_input.checked).toBe(true);
         });
 
       });
