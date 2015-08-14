@@ -305,24 +305,37 @@ function findL1Descendants(element) {
   return descs;
 }
 
-function squashKeeps(element) {
-  var bindChildren = element.bindChildren;
-
-  if (bindChildren === Infinity || isNaN(bindChildren)) {
-    for (var i = 0; i < element.children.length; i++) {
-      squashKeeps(element.children[i]);
-    }
+function processBindingAttributes(element) {
+  if (element.hasAttribute('bindnone')) {
+    return;
   }
-  else if (bindChildren > 0) {
-    var child = element.children[bindChildren - 1];
-    if (!child) return;
-    while (child != element.lastChild) element.removeChild(element.lastChild);
-    for (var i = 0; i < element.children.length; i++) {
-      squashKeeps(element.children[i]);
-    }
-  }
-  else if (bindChildren === 0) {
+  else if (element.hasAttribute('bindtext') || element.hasAttribute('bindhtml')) {
     element.innerHTML = '';
+  }
+  else if (element.hasAttribute('bindchildren')) {
+    var bindChildren = element.bindChildren;
+
+    if (bindChildren === Infinity || isNaN(bindChildren)) {
+      for (var i = 0; i < element.children.length; i++) {
+        processBindingAttributes(element.children[i]);
+      }
+    }
+    else if (bindChildren > 0) {
+      var child = element.children[bindChildren - 1];
+      if (!child) return;
+      while (child != element.lastChild) element.removeChild(element.lastChild);
+      for (var i = 0; i < element.children.length; i++) {
+        processBindingAttributes(element.children[i]);
+      }
+    }
+    else if (bindChildren === 0) {
+      element.innerHTML = '';
+    }
+  }
+  else {
+    for (var i = 0; i < element.children.length; i++) {
+      processBindingAttributes(element.children[i]);
+    }
   }
 }
 
@@ -393,7 +406,7 @@ function destructureView(view, viewCache) {
   if (!name) return false;
   if (view.outer) return false;
   view = view.cloneNode(true);
-  squashKeeps(view);
+  processBindingAttributes(view);
   var destructuredViews = {};
   destructuredViews[name] = view;
   var recursionGuard = [];
@@ -406,7 +419,8 @@ function destructureView(view, viewCache) {
     view, destructuredViews, recursionGuard, context);
   if (destructuredView !== true) return false;
   for (var name in destructuredViews) {
-    viewCache.set(name, destructuredViews[name]);
+    var destructured = destructuredViews[name];
+    viewCache.set(name, destructured);
   }
   return context.targetView;
 }
@@ -668,7 +682,12 @@ var _commonPropertyDescriptorsB = (function () {
         return this.getAttribute('bindtext');
       },
       set: function (value) {
-        this.setAttribute('bindtext', value);
+        if (typeof value === 'undefined') {
+          this.removeAttribute('bindtext');
+        }
+        else {
+          this.setAttribute('bindtext', value);
+        }
       }
     },
 
@@ -677,7 +696,12 @@ var _commonPropertyDescriptorsB = (function () {
         return this.getAttribute('bindhtml');
       },
       set: function (value) {
-        this.setAttribute('bindhtml', value);
+        if (typeof value === 'undefined') {
+          this.removeAttribute('bindhtml');
+        }
+        else {
+          this.setAttribute('bindhtml', value);
+        }
       }
     },
 
@@ -686,7 +710,12 @@ var _commonPropertyDescriptorsB = (function () {
         return this.getAttribute('bindeach');
       },
       set: function (value) {
-        this.setAttribute('bindeach', value);
+        if (typeof value === 'undefined') {
+          this.removeAttribute('bindeach');
+        }
+        else {
+          this.setAttribute('bindeach', value);
+        }
       }
     },
 
@@ -698,7 +727,7 @@ var _commonPropertyDescriptorsB = (function () {
         if (value === true) {
           this.setAttribute('bindnone', 'bindnone');
         }
-        else if (value === false) {
+        else if (value === false || typeof value === 'undefined') {
           this.removeAttribute('bindnone');
         }
       }

@@ -311,17 +311,17 @@ describe("mvc", function () {
           _view.name = 'one';
           _child1 = _elem('view');
           _child1.name = 'two';
-          _child1.innerText = 'Hello';
+          _child1.textContent = 'Hello';
           _child2 = _elem('view');
           _child2.name = 'two';
-          _child2.innerText = 'World';
+          _child2.textContent = 'World';
           _view.appendChild(_child1);
           _view.appendChild(_child2);
           _mvc.destructureView(_view);
           _result = _mvc.restructureView('one');
           
-          expect(_result.children[0].innerText).toBe('Hello');
-          expect(_result.children[1].innerText).toBe('Hello');
+          expect(_result.children[0].textContent).toBe('Hello');
+          expect(_result.children[1].textContent).toBe('Hello');
         });
 
         it('squashes contents of elements with `bindchildren`', function() {
@@ -343,6 +343,29 @@ describe("mvc", function () {
 
             expect(_result.children[0].children.length).toBe(_slice);
           }
+        });
+
+        it('strips contents of elements with `bindtext` or `bindhtml` specified', function() {
+          var _view, _child, _result;
+
+          _view = _elem('view');
+          _view.name = 'one';
+          _child = _elem('div');
+          _child.bindText = 'SomeExpression';
+          _child.textContent = 'Hello World';
+          _view.appendChild(_child);
+          _mvc.destructureView(_view);
+          _result = _mvc.restructureView('one');
+
+          expect(_result.children[0].textContent).toBe('');
+
+          _child.bindText = undefined;
+          _child.bindHtml = 'SomeExpression';
+          _child.innerHTML = '<span>Hello World</span>';
+          _mvc.destructureView(_view);
+          _result = _mvc.restructureView('one');
+          
+          expect(_result.children[0].innerHTML).toBe('');
         });
 
     });
