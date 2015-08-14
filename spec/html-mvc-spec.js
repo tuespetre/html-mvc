@@ -695,6 +695,28 @@ describe("mvc", function () {
           expect(_input.checked).toBe(true);
         });
 
+        it('should interpret true/false/undefined as attribute presence', function() {
+          var _view, _child, _grandchild;
+
+          // true
+          _view = _elem('view');
+          _child = _elem('div');
+          _child.setAttribute('bindattr-data-true', 'true');
+          _child.setAttribute('bindattr-data-false', 'false');
+          _child.setAttribute('bindattr-data-undefined', 'undefined');
+          _view.appendChild(_child);
+          _model = _mvc.getModel('test');
+          _data['true'] = true;
+          _data['false'] = false;
+          _data['undefined'] = undefined;
+          _model.initialize(_data);
+          _view.bind(_model.record());
+          
+          expect(_child.getAttribute('data-true')).toBe('');
+          expect(_child.hasAttribute('data-false')).toBe(false);
+          expect(_child.hasAttribute('data-undefined')).toBe(false);
+        });
+
       });
 
     });
