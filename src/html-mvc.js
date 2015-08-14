@@ -720,24 +720,36 @@ var _commonPropertyDescriptorsB = (function () {
     'name': {
       get: function () {
         return this.getAttribute('name');
+      },
+      set: function(value) {
+        this.setAttribute('name', value);
       }
     },
 
     'outer': {
       get: function () {
         return this.getAttribute('outer');
+      },
+      set: function(value) {
+        this.setAttribute('outer', value);
       }
     },
 
     'model': {
       get: function () {
         return this.getAttribute('model');
+      },
+      set: function(value) {
+        this.setAttribute('model', value);
       }
     },
 
     'scope': {
       get: function () {
         return this.getAttribute('scope');
+      },
+      set: function(value) {
+        this.setAttribute('scope', value);
       }
     },
 
