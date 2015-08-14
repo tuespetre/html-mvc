@@ -710,7 +710,7 @@ var _commonPropertyDescriptorsB = (function () {
         return isNaN(bindChildren) || bindChildren < 0 ? Infinity : bindChildren;
       },
       set: function (value) {
-        if (isNan(value)) {
+        if (isNaN(value)) {
           throw new TypeError('bindChildren must be a number');
         }
         this.setAttribute('bindchildren', value);
