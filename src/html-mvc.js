@@ -249,11 +249,15 @@ function modelStore() {
   });
 }
 
-function viewCache() {
+function viewCache(appName, appVersion) {
   var _views = {};
+  // TODO: Use template string or something, it just doesn't 'feel right'
+  var _keyPrefix = 'htmlmvc|views|' + 
+    (appName || 'undefined').toString() + '|' + 
+    (appVersion || '0').toString() + '|';
 
   function key(name) {
-    return 'htmlmvc|views|' + name;
+    return _keyPrefix + name;
   }
 
   return Object.create(null, {
@@ -347,7 +351,10 @@ function destructureViewRecursive(view, destructured, recursion, context) {
     // Step vi.
     if (outer) isDependent = true;
     // Step vii.
-    if (isDependent && foundInnerDependent) return false;
+    if (isDependent && (foundInnerDependent || !context.resolvingOuterPath)) 
+      return false;
+    else
+      foundInnerDependent = true;
     // Step viii.
     var marker = document.createElement('view');
     // Step ix.
@@ -360,13 +367,19 @@ function destructureViewRecursive(view, destructured, recursion, context) {
       marker.setAttribute('outer', innerView.outer);
       context.targetView = innerView.name;
     }
+    else {
+      context.targetView = undefined;
+    }
     // Step xii.
     innerView.parentNode.replaceChild(marker, innerView);
     // Step xiii.
     if (!(name in destructured)) {
       innerView.removeAttribute('scope');
       destructured[name] = innerView;
-      var result = destructureViewRecursive(innerView, destructured, recursion);
+      var subContext = {
+        resolvingOuterPath: isDependent
+      };
+      var result = destructureViewRecursive(innerView, destructured, recursion, subContext);
       if (result !== true) return false;
     }
   }
@@ -376,14 +389,19 @@ function destructureViewRecursive(view, destructured, recursion, context) {
 
 function destructureView(view, viewCache) {
   if (!(view instanceof HTMLElement) || view.tagName !== 'VIEW') return false;
-  var name = view.getAttribute('name');
+  var name = view.name;
   if (!name) return false;
+  if (view.outer) return false;
   view = view.cloneNode(true);
   squashKeeps(view);
   var destructuredViews = {};
   destructuredViews[name] = view;
-  var recursionGuard = [name];
-  var context = { targetView: name };
+  var recursionGuard = [];
+  recursionGuard.push(name);
+  var context = { 
+    targetView: name, 
+    resolvingOuterPath: true 
+  };
   var destructuredView = destructureViewRecursive(
     view, destructuredViews, recursionGuard, context);
   if (destructuredView !== true) return false;
@@ -481,10 +499,10 @@ function transitionView(next, current) {
   transitionImpl(next, current);
 }
 
-function mvc() {
+function mvc(appName, appVersion) {
   var persistentModels = modelStore(),
       transientModels = modelStore(),
-      cachedViews = viewCache();
+      cachedViews = viewCache(appName, appVersion);
       
   var anonymous = model(record(data({})));
 
@@ -722,7 +740,12 @@ var _commonPropertyDescriptorsB = (function () {
         return this.getAttribute('name');
       },
       set: function(value) {
-        this.setAttribute('name', value);
+        if (typeof value === 'undefined') {
+          this.removeAttribute('name');
+        }
+        else {
+          this.setAttribute('name', value);
+        }
       }
     },
 
@@ -731,7 +754,12 @@ var _commonPropertyDescriptorsB = (function () {
         return this.getAttribute('outer');
       },
       set: function(value) {
-        this.setAttribute('outer', value);
+        if (typeof value === 'undefined') {
+          this.removeAttribute('outer');
+        }
+        else {
+          this.setAttribute('outer', value);
+        }
       }
     },
 
@@ -740,7 +768,12 @@ var _commonPropertyDescriptorsB = (function () {
         return this.getAttribute('model');
       },
       set: function(value) {
-        this.setAttribute('model', value);
+        if (typeof value === 'undefined') {
+          this.removeAttribute('model');
+        }
+        else {
+          this.setAttribute('model', value);
+        }
       }
     },
 
@@ -749,7 +782,12 @@ var _commonPropertyDescriptorsB = (function () {
         return this.getAttribute('scope');
       },
       set: function(value) {
-        this.setAttribute('scope', value);
+        if (typeof value === 'undefined') {
+          this.removeAttribute('scope');
+        }
+        else {
+          this.setAttribute('scope', value);
+        }
       }
     },
 
