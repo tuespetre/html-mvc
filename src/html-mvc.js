@@ -1099,7 +1099,11 @@ function transition(href, title, targetView, targetModel, method, sendRequest) {
       if (!view || (_target && _target !== '_self')) return;
       
       var sendRequest = function(req) {
-        req.send(new FormData(target));
+        var data = new FormData(target);
+        if (submitter) {
+          data.append(submitter.name, submitter.value);
+        }
+        req.send(data);
       }
       
       if (method === 'get') {
