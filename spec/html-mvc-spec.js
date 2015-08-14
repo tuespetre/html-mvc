@@ -324,6 +324,27 @@ describe("mvc", function () {
           expect(_result.children[1].innerText).toBe('Hello');
         });
 
+        it('squashes contents of elements with `bindchildren`', function() {
+          var _view, _child, _result;
+          var _count = 3; _slice = 1;
+
+          // Squash to single child, two children, three children
+          for (var _slice = 1; _slice <= _count; _slice++) {
+            _view = _elem('view');
+            _view.name = 'one';
+            _child = _elem('div');
+            _child.bindChildren = _slice;
+            for (var i = 0; i < _count * _slice; i++) {
+              _child.appendChild(_elem('div'));
+            }
+            _view.appendChild(_child);
+            _mvc.destructureView(_view);
+            _result = _mvc.restructureView('one');
+
+            expect(_result.children[0].children.length).toBe(_slice);
+          }
+        });
+
     });
 
     describe('restructuring', function() {
