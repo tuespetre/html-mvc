@@ -761,6 +761,21 @@ var _commonPropertyDescriptorsB = (function () {
           var bindAttrPattern = element.tagName === 'VIEW'
             ? /^\s*bindattr-((?!bindattr|(bindeach|bindtext|bindhtml|bindnone|model|scope|outer|name)\s*$)[A-Za-z0-9_-]+)\s*$/
             : /^\s*bindattr-((?!bindattr|(bindeach|bindtext|bindhtml|bindnone)\s*$)[A-Za-z0-9_-]+)\s*$/;
+            
+          function setControlValue(element, attrname, value) {
+            // Should probably do some further writing and assessment
+            // About how forms and their controls are to be handled.
+            // Only want to work with attribute names, NOT IDL names
+            // (looking at you, React.)
+            if (typeof value === 'undefined') value = null;
+            
+            if (attrname === 'value' && 'value' in element) {
+              element.value = value;
+            }
+            else if (attrname === 'checked' && 'checked' in element) {
+              element.checked = new Boolean(value);
+            }
+          }
 
           for (var i = 0; i < element.attributes.length; i++) {
             var attr = element.attributes[i];
@@ -768,6 +783,7 @@ var _commonPropertyDescriptorsB = (function () {
             if (!match) continue;
             var name = match[1];
             var val = record.value(attr.value);
+            
             if (val === true) {
               element.setAttribute(name, '');
             }
@@ -777,6 +793,8 @@ var _commonPropertyDescriptorsB = (function () {
             else {
               element.setAttribute(name, val);
             }
+            
+            setControlValue(element, name, val);
           }
 
           var bindText, bindHtml, bindEach;
