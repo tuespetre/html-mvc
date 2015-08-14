@@ -71,6 +71,7 @@ function data(_object) {
       switch (typeof val) {
         case 'string':
         case 'number':
+        case 'boolean':
           _values[name] = val;
           continue;
         case 'object':
@@ -688,7 +689,7 @@ var _commonPropertyDescriptorsB = (function () {
     'bindChildren': {
       get: function () {
         var bindChildren = parseInt(this.getAttribute('bindchildren'));
-        return Number.isNaN(bindChildren) ? bindChildren : bindChildren < 0 ? Infinity : bindChildren;
+        return Number.isNaN(bindChildren) || bindChildren < 0 ? Infinity : bindChildren;
       },
       set: function (value) {
         if (Number.isNan(value)) {
@@ -747,7 +748,7 @@ var _commonPropertyDescriptorsB = (function () {
           var bindHidden = element.getAttribute('bindattr-hidden');
           if (bindHidden !== null) {
             var val = record.value(bindHidden);
-            if (val === false) {
+            if (val === false || typeof val === 'undefined') {
               element.removeAttribute('hidden');
             }
             else {
@@ -766,7 +767,16 @@ var _commonPropertyDescriptorsB = (function () {
             var match = bindAttrPattern.exec(attr.name);
             if (!match) continue;
             var name = match[1];
-            element.setAttribute(name, record.value(attr.value));
+            var val = record.value(attr.value);
+            if (val === true) {
+              element.setAttribute(name, '');
+            }
+            else if (val === false || typeof val === 'undefined') {
+              element.removeAttribute(name);
+            }
+            else {
+              element.setAttribute(name, val);
+            }
           }
 
           var bindText, bindHtml, bindEach;
@@ -780,8 +790,7 @@ var _commonPropertyDescriptorsB = (function () {
           }
           else if (bindEach = element.bindEach) {
             var slice = element.bindChildren;
-            if (slice === Infinity) slice = 1;
-            if (slice === 0) return;
+            if (slice === Infinity || slice === 0) return;
             var collection = record.collection(bindEach);
             var childrenLength = element.children.length;
             if (childrenLength === 0) return;
@@ -886,6 +895,65 @@ var _commonPropertyDescriptorsB = (function () {
   Object.defineProperties(HTMLButtonElement.prototype, _commonPropertyDescriptorsB);
 })();
 
+function transition(href, title, targetView, targetModel, method, sendRequest) {
+  function fallback() {
+    window.location.href = href;
+  }
+  
+  function transition(restructuredView, currentView) {   
+    document.mvc.transitionView(restructuredView, currentView);
+    var state = {
+      targetView: targetView,
+      title: title || document.title,
+      __fromMvc: true
+    };
+    history.pushState(state, state.title, href);
+    document.title = state.title;
+    
+    var modelName = currentView.model,
+        record = modelName 
+          ? document.mvc.getModel(modelName).record() 
+          : document.mvc.anonymousModel().record();
+      
+    document.currentView.bind(record);
+  }
+  
+  var currentView = document.currentView;
+  if (!currentView) return fallback();
+  
+  var restructuredView = document.mvc.restructureView(targetView);
+  if (!restructuredView) return fallback();
+
+  if (targetModel) {      
+    var req = new XMLHttpRequest();
+    req.open(method, href);
+    req.setRequestHeader('Accept', 'multipart/json');
+    req.onload = function() {
+      if (req.status < 200 || req.status > 299) return fallback();
+      
+      var type = req.getResponseHeader('Content-Type');
+      var result = parseMultipartJsonResponse(type, req.responseText);
+      
+      if (!result[targetModel]) return fallback();
+      
+      for (var name in result) {
+        var model = document.mvc.getModel(name);
+        model.initialize(result[name]);
+      }
+      
+      transition(restructuredView, currentView);
+    }
+    req.onerror = function() {
+      return fallback();
+    }
+    if (sendRequest) sendRequest(req);
+    else return fallback();
+  }
+  else {
+    transition(restructuredView, currentView);
+  }
+}
+
 // This also does some stuff with form submitting elements
 (function extendHyperlinkNavigation() {
   window.addEventListener('click', function (e) {
@@ -897,60 +965,16 @@ var _commonPropertyDescriptorsB = (function () {
 
     // Handle navigation-causing clicks
     if (name === 'A' || name === 'AREA') {
-      if (!target.view || !(currentView = document.currentView)) return;
-      var restructured = document.mvc.restructureView(target.view);
-      if (!restructured) return;
-      
-      function transition() {
-        document.mvc.transitionView(restructured, currentView);
-        var state = {
-          targetView: target.view,
-          title: target.title || document.title,
-          __fromMvc: true
-        };
-        history.pushState(state, state.title, target.href);
-        document.title = state.title;
-        
-        var modelName = document.currentView.model,
-            record = modelName 
-              ? document.mvc.getModel(modelName).record() 
-              : document.mvc.anonymousModel().record();
-          
-        document.currentView.bind(record);
-      }
-      
-      if (target.model) {
-        var req = new XMLHttpRequest();
-        req.open('GET', target.href);
-        req.setRequestHeader('Accept', 'multipart/json');
-        req.onload = function() {
-          if (req.status < 200 || req.status > 299) {
-            window.location.href = target.href;
-            return;
-          }
-          
-          var type = req.getResponseHeader('Content-Type');
-          var result = parseMultipartJsonResponse(type, req.responseText);
-          
-          if (!result[target.model]) {
-            window.location.href = target.href;
-            return;
-          }
-          
-          for (var name in result) {
-            var model = document.mvc.getModel(name);
-            model.initialize(result[name]);
-          }
-          
-          transition();
-        }
-        req.send();
-      }
-      else {
-        transition();
-      }
-      
-      e.preventDefault();
+      e.preventDefault();      
+      transition(
+        target.href,
+        target.title,
+        target.view,
+        target.model,
+        'GET',
+        function(req) {
+          req.send();
+        });
     }
     // Handle submission-causing clicks
     else if (
@@ -964,6 +988,7 @@ var _commonPropertyDescriptorsB = (function () {
 })();
 
 (function extendFormSubmission() {
+
   function constructFormDataSet(form, submitter) {
     // 4.10.22.4 Constructing the form data set
     // Step 1
@@ -1055,16 +1080,6 @@ var _commonPropertyDescriptorsB = (function () {
     return formDataSet;
   }
 
-  function handleFormResponse(req, fallbackAction) {
-    if (req.status < 200 || req.status > 299) {
-      window.location.href = fallbackAction;
-      return;
-    }
-    
-    var type = req.getResponseHeader('Content-Type');
-    var result = parseMultipartJsonResponse(type, req.responseText);
-  }
-
   window.addEventListener('submit', function (e) {
     if (!('pushState' in history)) return;
 
@@ -1076,13 +1091,17 @@ var _commonPropertyDescriptorsB = (function () {
       var submitter = target.__triggeringElement,
           view = submitter ? submitter.formview || target.view : target.view,
           model = submitter ? submitter.formmodel || target.model : target.model,
-          action = submitter ? submitter.formaction || target.action : target.action,
+          action = (submitter ? submitter.formaction || target.action : target.action) || window.location.href,
           enctype = submitter ? submitter.formenctype || target.enctype : target.enctype,
           _target = submitter ? submitter.formtarget || target.target : target.target,
           method = submitter ? submitter.formmethod || target.method : target.method;
 
       if (!view || (_target && _target !== '_self')) return;
-
+      
+      var sendRequest = function(req) {
+        req.send(new FormData(target));
+      }
+      
       if (method === 'get') {
         var data = constructFormDataSet(target, submitter);
         // be a little naive here; robustify it later, maybe
@@ -1093,33 +1112,23 @@ var _commonPropertyDescriptorsB = (function () {
           search += encodeURIComponent(name) + '=' + encodeURIComponent(value);
         }
         action = new URL(action);
-        action.search = search;
-
-        e.preventDefault();
-        var req = new XMLHttpRequest();
-        req.open(method, action);
-        req.onload = function () {
-          // handle response
-          if (req.status < 200 || req.status > 299) {
-            // do something
-          }
-        }
-        req.send(new FormData(target));
+        action.search = search; 
+        sendRequest = function(req) { 
+          req.send(); 
+        };
       }
-      else if (method === 'post') {
-        e.preventDefault();
-        var req = new XMLHttpRequest();
-        req.open(method, action);
-        req.onload = function () {
-          // handle response
-          if (req.status < 200 || req.status > 299) {
-            // do something
-          }
-        }
-        req.send(new FormData(target));
-      }
+      
+      e.preventDefault();
+      transition(
+        action,
+        null,
+        view,
+        model,
+        method,
+        sendRequest);
     }
   });
+  
 })();
 
 (function extendHistoryTraversal() {
@@ -1228,7 +1237,7 @@ function parseMultipartJsonResponse(contentType, body) {
   
   gather_models:
     for (var i = 0; i < parts.length; i++) {
-      var part = parseMultipartResponsePart(parts[0]);
+      var part = parseMultipartResponsePart(parts[i]);
       if (!part.body) continue gather_models;
       var contentType = part.headers['Content-Type'];
       if (!contentType) continue gather_models;

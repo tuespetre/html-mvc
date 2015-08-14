@@ -80,7 +80,7 @@ function parseMultipartJsonResponse(contentType, body) {
   
   gather_models:
     for (var i = 0; i < parts.length; i++) {
-      var part = parseMultipartResponsePart(parts[0]);
+      var part = parseMultipartResponsePart(parts[i]);
       if (!part.body) continue gather_models;
       var contentType = part.headers['Content-Type'];
       if (!contentType) continue gather_models;
