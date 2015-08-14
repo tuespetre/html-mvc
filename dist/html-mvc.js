@@ -304,7 +304,7 @@ function findL1Descendants(element) {
 function squashKeeps(element) {
   var bindChildren = element.bindChildren;
 
-  if (bindChildren === Infinity || Number.isNaN(bindChildren)) {
+  if (bindChildren === Infinity || isNaN(bindChildren)) {
     for (var i = 0; i < element.children.length; i++) {
       squashKeeps(element.children[i]);
     }
@@ -689,10 +689,10 @@ var _commonPropertyDescriptorsB = (function () {
     'bindChildren': {
       get: function () {
         var bindChildren = parseInt(this.getAttribute('bindchildren'));
-        return Number.isNaN(bindChildren) || bindChildren < 0 ? Infinity : bindChildren;
+        return isNaN(bindChildren) || bindChildren < 0 ? Infinity : bindChildren;
       },
       set: function (value) {
-        if (Number.isNan(value)) {
+        if (isNan(value)) {
           throw new TypeError('bindChildren must be a number');
         }
         this.setAttribute('bindchildren', value);
