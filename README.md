@@ -16,6 +16,8 @@ It's time to get serious about this. Let's take our lessons learned from Angular
   - Target View, aka the main view you want a user to see when they follow a link (whether by navigation or form submission)
 3.  Start using (and helping to develop) **HTML MVC**.
 
+## [See the demo, written with ASP.NET 5](https://github.com/tuespetre/html-mvc-aspnet5)
+
 ## What is HTML MVC
 
 1. It's a `prolly-maybe-idk-fill` designed to provide a generalized solution for a complex problem
@@ -153,7 +155,3 @@ HTML MVC also extends the HTMLElement prototype with several attributes:
 ### 3. Bringing models and views together
 
 In addition to the `view` and `formview` attributes, there are also `model` and `formmodel` attributes for navigation/submission elements. When they are detected, HTML will first try to relocate and restructure the view as usual, but it will also request a `mime/multipart` response from the server at the target URL, to which the server should respond with a multipart message where each part has a `Content-Type` header of `application/json;model={model-name-here}` (yes, that is valid, it's a MIME type extension parameter.) One of the parts should match the `model` name specified on the element; if not, or if the message is not successful or of the wrong type, navigation or submission will proceed as normal (except in the case of a form POST, where you wouldn't want to submit twice.)
-
-## Enough words, see the demo app
-
-Demo app with ASP.NET 5 coming soon.
