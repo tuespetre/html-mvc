@@ -616,7 +616,35 @@ describe("mvc", function () {
 
       });
 
-      describe('`bindattr`', function () {
+      describe('`bindattr-hidden` and `hidden`', function() {
+      
+        it('should skip binding for elements and descendants', function() {
+          var _model, _view, _branch1, _branch2, _element;
+
+          _mvc.defineModel('test');
+          _model = _mvc.getModel('test');
+          _data.Hidden = true;
+          _model.initialize(_data);
+          _view =_elem('view');
+          _branch1 =_elem('div');
+          _branch1.setAttribute('bindtext', 'Hello');
+          _branch1.setAttribute('hidden', '');
+          _view.appendChild(_branch1);
+          _branch2 =_elem('div');
+          _branch2.setAttribute('bindattr-hidden', 'Hidden');
+          _element =_elem('div');
+          _element.setAttribute('bindtext', 'Hello');
+          _branch2.appendChild(_element);
+          _view.appendChild(_branch2);
+          _view.bind(_model.record());
+          
+          expect(_view.children[0].textContent).toBe('');
+          expect(_view.children[1].children[0].textContent).toBe('');
+        });
+
+      });
+
+      describe('`bindattr-*`', function () {
         
         it('should bind attributes except `bindattr-*`', function() {
           var _model, _view, _element;
