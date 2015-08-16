@@ -1,3 +1,7 @@
+var _elem = function (tagName) {
+  return document.createElement(tagName);
+};
+
 describe('multipart/json parsing', function () {
 
   it('should parse content type headers with quotes', function () {
@@ -25,14 +29,34 @@ describe('multipart/json parsing', function () {
 
 });
 
+describe('form serialization', function () {
+
+  it('should properly encode application/x-www-form-urlencoded', function () {
+    var _form, _control, _result;
+
+    _form = _elem('form');
+    _control = _elem('input');
+    _control.type = 'text';
+    _control.name = 'Hello';
+    _control.value = 'World';
+    _form.appendChild(_control);
+    _control = _elem('textarea');
+    _control.name = 'Goodbye';
+    _control.value = '<Cruel> / (World)';
+    _form.appendChild(_control);
+    _result = constructFormDataSet(_form);
+    _result = urlEncodeFormData(_result);
+
+    expect(_result).toBe('Hello=World&Goodbye=%3CCruel%3E%20%2F%20(World)');
+  });
+
+});
+
 describe("mvc", function () {
   var _mvc;
   var _data;
   var _appName = 'testing';
   var _appVer = 1;
-  var _elem = function (tagName) {
-    return document.createElement(tagName);
-  };
 
   beforeEach(function () {
     // TODO: Inject a storage provider into the view cache

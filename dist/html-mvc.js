@@ -1,4 +1,4 @@
-(function(){/*
+(function(window, document, history){/*
 
 Requires:
 - pushState
@@ -721,13 +721,22 @@ function parseMultipartJsonResponse(contentType, body) {
   return models;
 }
 function constructFormDataSet(form, submitter) {
+  function datalistAncestor(elem) {
+    var suspect = elem;
+    while (suspect = suspect.parentNode) {
+      if (suspect.tagName === 'DATALIST') 
+        return true;
+    }
+    return false;
+  }
+
   // HTML 5 specification (attempting to be compliant-ish)
   // 4.10.22.4 Constructing the form data set
   // Step 1
   var elems = [];
-  var submittable = ['button', 'input', 'keygen', 'object', 'select', 'textarea'];
-  for (var i = 0; i < target.elements.length; i++) {
-    var elem = target.elements[i];
+  var submittable = ['BUTTON', 'INPUT', 'KEYGEN', 'OBJECT', 'SELECT', 'TEXTAREA'];
+  for (var i = 0; i < form.elements.length; i++) {
+    var elem = form.elements[i];
     if (submittable.indexOf(elem.tagName) == -1) continue;
     elems.push(elem);
   }
@@ -816,7 +825,9 @@ function urlEncodeFormData(data) {
   var result = '';
   for (var i = 0; i < data.length; i++) {
     var datum = data[i];
+    var name = datum.name;
     var value = datum.type === 'file' ? datum.value.name : datum.value;
+    if (i > 0) result += '&';
     result += encodeURIComponent(name) + '=' + encodeURIComponent(value);
   }
   return result;
@@ -1185,124 +1196,107 @@ var document_descriptors = {
   }
 
 };
-
-Object.defineProperties(HTMLAnchorElement.prototype, anchor_area_form_descriptors);
-Object.defineProperties(HTMLAreaElement.prototype, anchor_area_form_descriptors);
-Object.defineProperties(HTMLFormElement.prototype, anchor_area_form_descriptors);
-Object.defineProperties(HTMLInputElement.prototype, input_button_descriptors);  
-Object.defineProperties(HTMLButtonElement.prototype, input_button_descriptors);
-Object.defineProperties(HTMLScriptElement.prototype, script_descriptors);
-Object.defineProperties(HTMLElement.prototype, element_descriptors);
-Object.defineProperties(HTMLUnknownElement.prototype, view_descriptors);
-Object.defineProperties(HTMLDocument.prototype, document_descriptors);
 // This also does some stuff with form submitting elements
-(function extendHyperlinkNavigation() {
-  window.addEventListener('click', function (e) {
-    if (!('pushState' in history)) return;
+function extendHyperlinkNavigation(e) {
+  if (!('pushState' in history)) return;
 
-    var target = e.target,
-        name = target.tagName,
-        currentView;
+  var target = e.target,
+      name = target.tagName,
+      currentView;
 
-    // Handle navigation-causing clicks
-    if (name === 'A' || name === 'AREA') {
-      e.preventDefault();      
-      transition(
-        target.href,
-        target.title,
-        target.view,
-        target.model,
-        'GET',
-        function(req) {
-          req.send();
-        });
-    }
-    // Handle submission-causing clicks
-    else if (
-      (name === 'INPUT' && (target.type === 'submit' || target.type === 'image')) ||
-      (name === 'BUTTON' && (target.type === 'submit'))
-    ) {
-      if (!target.form) return;
-      target.form.__triggeringElement = target;
-    }
-  });
-})();
+  // Handle navigation-causing clicks
+  if (name === 'A' || name === 'AREA') {
+    e.preventDefault();      
+    transition(
+      target.href,
+      target.title,
+      target.view,
+      target.model,
+      'GET',
+      function(req) {
+        req.send();
+      });
+  }
+  // Handle submission-causing clicks
+  else if (
+    (name === 'INPUT' && (target.type === 'submit' || target.type === 'image')) ||
+    (name === 'BUTTON' && (target.type === 'submit'))
+  ) {
+    if (!target.form) return;
+    target.form.__triggeringElement = target;
+  }
+};
 
-(function extendFormSubmission() {
+function extendFormSubmission(e) {
+  if (!('pushState' in history)) return;
 
-  window.addEventListener('submit', function (e) {
-    if (!('pushState' in history)) return;
+  var target = e.target,
+      name = target.tagName,
+      currentView;
 
-    var target = e.target,
-        name = target.tagName,
-        currentView;
+  if (name === 'FORM') {
+    var submitter = target.__triggeringElement,
+        view = submitter ? submitter.formview || target.view : target.view,
+        model = submitter ? submitter.formmodel || target.model : target.model,
+        action = (submitter ? submitter.formaction || target.action : target.action) || window.location.href,
+        enctype = submitter ? submitter.formenctype || target.enctype : target.enctype,
+        _target = submitter ? submitter.formtarget || target.target : target.target,
+        method = submitter ? submitter.formmethod || target.method : target.method;
 
-    if (name === 'FORM') {
-      var submitter = target.__triggeringElement,
-          view = submitter ? submitter.formview || target.view : target.view,
-          model = submitter ? submitter.formmodel || target.model : target.model,
-          action = (submitter ? submitter.formaction || target.action : target.action) || window.location.href,
-          enctype = submitter ? submitter.formenctype || target.enctype : target.enctype,
-          _target = submitter ? submitter.formtarget || target.target : target.target,
-          method = submitter ? submitter.formmethod || target.method : target.method;
-
-      if (!view || (_target && _target !== '_self')) return;
-      
-      var sendRequest = function(req) {
-        var data = new FormData(target);
-        if (submitter) {
-          data.append(submitter.name, submitter.value);
-        }
-        req.send(data);
+    if (!view || (_target && _target !== '_self')) return;
+    
+    var sendRequest = function(req) {
+      var data = new FormData(target);
+      if (submitter) {
+        data.append(submitter.name, submitter.value);
       }
-      
-      if (method === 'get') {
-        var data = constructFormDataSet(target, submitter);
-        action = new URL(action);
-        action.search = urlEncodeFormDataSet(data);
-        sendRequest = function(req) { 
-          req.send(); 
-        };
-      }
-      
-      e.preventDefault();
-      transition(
-        action,
-        null,
-        view,
-        model,
-        method,
-        sendRequest);
+      req.send(data);
     }
-  });
-  
-})();
-
-(function extendHistoryTraversal() {
-  window.addEventListener('popstate', function (e) {
-    var state = e.state;
-
-    if (state && state.__fromMvc === true) {
-      var targetView = state.targetView,
-          currentView = document.currentView,
-          restructured = document.mvc.restructureView(targetView);
-
-      if (!restructured || !currentView) {
-        location.replace(location.href);
-        return;
-      }
-      else {
-        document.title = state.title;
-        document.mvc.transitionView(restructured, currentView);
-      }
-
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
+    
+    if (method === 'get') {
+      var data = constructFormDataSet(target, submitter);
+      action = new URL(action);
+      action.search = urlEncodeFormDataSet(data);
+      sendRequest = function(req) { 
+        req.send(); 
+      };
     }
-  });
-})();
-document.addEventListener('DOMContentLoaded', function () {
+    
+    e.preventDefault();
+    transition(
+      action,
+      null,
+      view,
+      model,
+      method,
+      sendRequest);
+  }
+};
+
+function extendHistoryTraversal(e) {
+  var state = e.state;
+
+  if (state && state.__fromMvc === true) {
+    var targetView = state.targetView,
+        currentView = document.currentView,
+        restructured = document.mvc.restructureView(targetView);
+
+    if (!restructured || !currentView) {
+      location.replace(location.href);
+      return;
+    }
+    else {
+      document.title = state.title;
+      document.mvc.transitionView(restructured, currentView);
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+  }
+};
+
+function initializeMvc() {
   
   var instance = document.mvc;
   
@@ -1336,4 +1330,18 @@ document.addEventListener('DOMContentLoaded', function () {
     history.replaceState(state, document.title, location.href);
   })();
   
-});})();
+};
+Object.defineProperties(HTMLAnchorElement.prototype, anchor_area_form_descriptors);
+Object.defineProperties(HTMLAreaElement.prototype, anchor_area_form_descriptors);
+Object.defineProperties(HTMLFormElement.prototype, anchor_area_form_descriptors);
+Object.defineProperties(HTMLInputElement.prototype, input_button_descriptors);  
+Object.defineProperties(HTMLButtonElement.prototype, input_button_descriptors);
+Object.defineProperties(HTMLScriptElement.prototype, script_descriptors);
+Object.defineProperties(HTMLElement.prototype, element_descriptors);
+Object.defineProperties(HTMLUnknownElement.prototype, view_descriptors);
+Object.defineProperties(HTMLDocument.prototype, document_descriptors);
+
+window.addEventListener('DOMContentLoaded', initializeMvc);
+window.addEventListener('click', extendHyperlinkNavigation);
+window.addEventListener('submit', extendFormSubmission);
+window.addEventListener('popstate', extendHistoryTraversal);})(window, document, history);

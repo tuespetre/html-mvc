@@ -1,11 +1,20 @@
 function constructFormDataSet(form, submitter) {
+  function datalistAncestor(elem) {
+    var suspect = elem;
+    while (suspect = suspect.parentNode) {
+      if (suspect.tagName === 'DATALIST') 
+        return true;
+    }
+    return false;
+  }
+
   // HTML 5 specification (attempting to be compliant-ish)
   // 4.10.22.4 Constructing the form data set
   // Step 1
   var elems = [];
-  var submittable = ['button', 'input', 'keygen', 'object', 'select', 'textarea'];
-  for (var i = 0; i < target.elements.length; i++) {
-    var elem = target.elements[i];
+  var submittable = ['BUTTON', 'INPUT', 'KEYGEN', 'OBJECT', 'SELECT', 'TEXTAREA'];
+  for (var i = 0; i < form.elements.length; i++) {
+    var elem = form.elements[i];
     if (submittable.indexOf(elem.tagName) == -1) continue;
     elems.push(elem);
   }
@@ -94,7 +103,9 @@ function urlEncodeFormData(data) {
   var result = '';
   for (var i = 0; i < data.length; i++) {
     var datum = data[i];
+    var name = datum.name;
     var value = datum.type === 'file' ? datum.value.name : datum.value;
+    if (i > 0) result += '&';
     result += encodeURIComponent(name) + '=' + encodeURIComponent(value);
   }
   return result;
