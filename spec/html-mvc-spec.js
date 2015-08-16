@@ -418,6 +418,61 @@ describe("mvc", function () {
 
     });
 
+    describe('transitioning', function () {
+    
+      it('replaces differing `view` elements when analyzing the tree', function () {
+        var _outer, _view1, _view2, _child1, _child2, _restructured;
+
+        _outer = _elem('view');
+        _outer.name = 'outer';
+        _child1 = _elem('div');
+        _view1 = _elem('view');
+        _view1.outer = 'outer';
+        _view1.name = 'target';
+        _view1.textContent = 'Hello';
+        _child1.appendChild(_view1);
+        _child2 = _elem('span');
+        _child2.textContent = 'Hollaaa';
+        _child1.appendChild(_child2);
+        _outer.appendChild(_child1);
+        _mvc.destructureView(_outer);
+        _restructured = _mvc.restructureView('target');
+        _view2 = _elem('view');
+        _view2.textContent = 'Goodbye cruel';
+        _child1.replaceChild(_view2, _view1);
+        _mvc.transitionView(_restructured, _outer);
+
+        expect(_outer.children[0]).toBe(_child1);
+        expect(_child1.children[0].firstChild).not.toBe(_view2);
+        expect(_child1.children[0].firstChild.textContent).toBe('Hello');
+      });
+    
+      it('replaces `view` elements when their L1 descendant counts differ', function () {
+        var _frag, _outer, _view1, _view2, _child1, _child2, _restructured;
+
+        _frag = document.createDocumentFragment();
+        _outer = _elem('view');
+        _outer.name = 'outer';
+        _frag.appendChild(_outer);
+        _child1 = _elem('div');
+        _view1 = _elem('view');
+        _view1.outer = 'outer';
+        _view1.name = 'target';
+        _child1.appendChild(_view1);
+        _child2 = _elem('span');
+        _child1.appendChild(_child2);
+        _outer.appendChild(_child1);
+        _mvc.destructureView(_outer);
+        _restructured = _mvc.restructureView('target');
+        _view2 = _elem('view');
+        _child1.appendChild(_view2);
+        _mvc.transitionView(_restructured, _outer);
+
+        expect(_frag.firstChild).not.toBe(_outer);
+      });
+
+    });
+
     describe('binding', function () {
 
       describe('`bindtext`', function () {
