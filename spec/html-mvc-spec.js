@@ -1,22 +1,22 @@
 describe('multipart/json parsing', function () {
 
-  it('should parse content type headers with quotes', function() {
-    var unquotedHeader = 'application/json; model="my-model"';    
+  it('should parse content type headers with quotes', function () {
+    var unquotedHeader = 'application/json; model="my-model"';
     var result = parseContentTypeHeader(unquotedHeader);
     expect(result.type).toBe('application/json');
     expect(result.parameters['model']).toBeDefined();
     expect(result.parameters['model']).toBe('my-model');
   });
 
-  it('should parse content type headers without quotes', function() {
-    var quotedHeader = 'application/json;model=my-model';   
+  it('should parse content type headers without quotes', function () {
+    var quotedHeader = 'application/json;model=my-model';
     var result = parseContentTypeHeader(quotedHeader);
     expect(result.type).toBe('application/json');
     expect(result.parameters['model']).toBeDefined();
     expect(result.parameters['model']).toBe('my-model');
   });
 
-  it('should parse header sections', function() {
+  it('should parse header sections', function () {
     var headerSection = 'Content-Type: application/json;model=my-model \r\n X-Other-Header: Some Value';
     var result = parseHeaderSection(headerSection);
     expect(result['Content-Type']).toBe('application/json;model=my-model');
@@ -30,7 +30,7 @@ describe("mvc", function () {
   var _data;
   var _appName = 'testing';
   var _appVer = 1;
-  var _elem = function(tagName) {
+  var _elem = function (tagName) {
     return document.createElement(tagName);
   };
 
@@ -125,7 +125,7 @@ describe("mvc", function () {
         _newData.Hello = 'Goodbye';
         _model.initialize(_newData);
         _record3 = _mvc.getModel('existent').record();
-        
+
 
         expect(_record1).not.toBe(_record2);
         expect(_record1.value('Hello')).toBeUndefined();
@@ -175,285 +175,285 @@ describe("mvc", function () {
       });
 
     });
-  
+
   });
 
   describe('views', function () {
 
-    describe('destructuring', function() {
-        
-        it('fails to destructure view trees with recursively named views', function() {
-            var _parent, _child, _grandchild, _restructured;
+    describe('destructuring', function () {
 
-            _parent =_elem('view');
-            _parent.name = 'one';
-            _child =_elem('view');
-            _child.name = 'one';
-            _parent.appendChild(_child);
-            _result = _mvc.destructureView(_parent); 
+      it('fails to destructure view trees with recursively named views', function () {
+        var _parent, _child, _grandchild, _restructured;
 
-            expect(_result).toBe(false);
+        _parent = _elem('view');
+        _parent.name = 'one';
+        _child = _elem('view');
+        _child.name = 'one';
+        _parent.appendChild(_child);
+        _result = _mvc.destructureView(_parent);
 
-            // Now with a grandchild
+        expect(_result).toBe(false);
 
-            _parent =_elem('view');
-            _parent.name = 'one';
-            _child =_elem('view');
-            _child.name = 'two';
-            _grandchild =_elem('view');
-            _grandchild.name = 'one';
-            _parent.appendChild(_child);
-            _child.appendChild(_grandchild);
-            _result = _mvc.destructureView(_parent);
+        // Now with a grandchild
 
-            expect(_result).toBe(false);
-        });
+        _parent = _elem('view');
+        _parent.name = 'one';
+        _child = _elem('view');
+        _child.name = 'two';
+        _grandchild = _elem('view');
+        _grandchild.name = 'one';
+        _parent.appendChild(_child);
+        _child.appendChild(_grandchild);
+        _result = _mvc.destructureView(_parent);
 
-        it('fails to destructure view trees with misplaced outer dependents', function() {
-            var _view, _child, _grandchild, _result;
+        expect(_result).toBe(false);
+      });
 
-            // Top-level outer dependency not supported
-            _view =_elem('view');
-            _view.name = 'one';
-            _view.outer = 'two';
-            _result = _mvc.destructureView(_view);
+      it('fails to destructure view trees with misplaced outer dependents', function () {
+        var _view, _child, _grandchild, _result;
 
-            expect(_result).toBe(false);
+        // Top-level outer dependency not supported
+        _view = _elem('view');
+        _view.name = 'one';
+        _view.outer = 'two';
+        _result = _mvc.destructureView(_view);
 
-            // Outer dependency specified on an inner view not supported
-            _view =_elem('view');
-            _view.name = 'outer';
-            _child =_elem('view');
-            _child.name = 'target';
-            _grandchild =_elem('view');
-            _grandchild.name = 'invalid';
-            _grandchild.outer = 'target';
-            _view.appendChild(_child);
-            _child.appendChild(_grandchild);
-            _result = _mvc.destructureView(_view);
+        expect(_result).toBe(false);
 
-            expect(_result).toBe(false);
-        });
+        // Outer dependency specified on an inner view not supported
+        _view = _elem('view');
+        _view.name = 'outer';
+        _child = _elem('view');
+        _child.name = 'target';
+        _grandchild = _elem('view');
+        _grandchild.name = 'invalid';
+        _grandchild.outer = 'target';
+        _view.appendChild(_child);
+        _child.appendChild(_grandchild);
+        _result = _mvc.destructureView(_view);
 
-        it('fails to destructure view trees with multiple outer dependents', function() {
-          var _view, _child1, _child2, _result;
+        expect(_result).toBe(false);
+      });
 
-          // When the multiples have different names
-          _view =_elem('view');
-          _view.name = 'one';
-          _child1 = _elem('view');
-          _child1.name = 'two';
-          _child1.outer = 'one';
-          _child2 = _elem('view');
-          _child2.name = 'three';
-          _child2.outer = 'one';
-          _view.appendChild(_child1);
-          _view.appendChild(_child2);
-          _result = _mvc.destructureView(_view);
-          
-          expect(_result).toBe(false);
+      it('fails to destructure view trees with multiple outer dependents', function () {
+        var _view, _child1, _child2, _result;
 
-          // When the multiples have the same name
-          _view =_elem('view');
-          _view.name = 'one';
-          _child1 = _elem('view');
-          _child1.name = 'two';
-          _child1.outer = 'one';
-          _child2 = _elem('view');
-          _child2.name = 'two';
-          _child2.outer = 'one';
-          _view.appendChild(_child1);
-          _view.appendChild(_child2);
-          _result = _mvc.destructureView(_view);
-          
-          expect(_result).toBe(false);
-        });
+        // When the multiples have different names
+        _view = _elem('view');
+        _view.name = 'one';
+        _child1 = _elem('view');
+        _child1.name = 'two';
+        _child1.outer = 'one';
+        _child2 = _elem('view');
+        _child2.name = 'three';
+        _child2.outer = 'one';
+        _view.appendChild(_child1);
+        _view.appendChild(_child2);
+        _result = _mvc.destructureView(_view);
 
-        it('fails to destructure view trees with unnamed views', function() {
-            var _view, _child, _grandchild, _result;
+        expect(_result).toBe(false);
 
-            // One level deep
-            _view =_elem('view');
-            _result = _mvc.destructureView(_view);
+        // When the multiples have the same name
+        _view = _elem('view');
+        _view.name = 'one';
+        _child1 = _elem('view');
+        _child1.name = 'two';
+        _child1.outer = 'one';
+        _child2 = _elem('view');
+        _child2.name = 'two';
+        _child2.outer = 'one';
+        _view.appendChild(_child1);
+        _view.appendChild(_child2);
+        _result = _mvc.destructureView(_view);
 
-            expect(_result).toBe(false);
+        expect(_result).toBe(false);
+      });
 
-            // Two levels deep
-            _mvc = mvc(_appName, _appVer++);
-            _view =_elem('view');
-            _view.name = 'one';
-            _child =_elem('view');
-            _child.name = undefined;
-            _view.appendChild(_child);
-            _result = _mvc.destructureView(_view);
+      it('fails to destructure view trees with unnamed views', function () {
+        var _view, _child, _grandchild, _result;
 
-            expect(_result).toBe(false);
+        // One level deep
+        _view = _elem('view');
+        _result = _mvc.destructureView(_view);
 
-            // More than two levels deep
-            _mvc = mvc(_appName, _appVer++);
-            _view =_elem('view');
-            _view.name = 'one';
-            _child =_elem('view');
-            _child.name = 'two';
-            _grandchild =_elem('view');
-            _grandchild.name = undefined;
-            _view.appendChild(_child);
-            _child.appendChild(_grandchild);
-            _result = _mvc.destructureView(_view);
+        expect(_result).toBe(false);
 
-            expect(_result).toBe(false);
-        });
+        // Two levels deep
+        _mvc = mvc(_appName, _appVer++);
+        _view = _elem('view');
+        _view.name = 'one';
+        _child = _elem('view');
+        _child.name = undefined;
+        _view.appendChild(_child);
+        _result = _mvc.destructureView(_view);
 
-        it('homogenizes inner views of the same name', function() {
-          var _view, _child1, _child2, _result;
+        expect(_result).toBe(false);
 
-          _view =_elem('view');
-          _view.name = 'one';
-          _child1 = _elem('view');
-          _child1.name = 'two';
-          _child1.textContent = 'Hello';
-          _child2 = _elem('view');
-          _child2.name = 'two';
-          _child2.textContent = 'World';
-          _view.appendChild(_child1);
-          _view.appendChild(_child2);
-          _mvc.destructureView(_view);
-          _result = _mvc.restructureView('one');
-          
-          expect(_result.children[0].textContent).toBe('Hello');
-          expect(_result.children[1].textContent).toBe('Hello');
-        });
+        // More than two levels deep
+        _mvc = mvc(_appName, _appVer++);
+        _view = _elem('view');
+        _view.name = 'one';
+        _child = _elem('view');
+        _child.name = 'two';
+        _grandchild = _elem('view');
+        _grandchild.name = undefined;
+        _view.appendChild(_child);
+        _child.appendChild(_grandchild);
+        _result = _mvc.destructureView(_view);
 
-        it('squashes contents of elements with `bindchildren`', function() {
-          var _view, _child, _result;
-          var _count = 3; _slice = 1;
+        expect(_result).toBe(false);
+      });
 
-          // Squash to single child, two children, three children
-          for (var _slice = 1; _slice <= _count; _slice++) {
-            _view = _elem('view');
-            _view.name = 'one';
-            _child = _elem('div');
-            _child.bindChildren = _slice;
-            for (var i = 0; i < _count * _slice; i++) {
-              _child.appendChild(_elem('div'));
-            }
-            _view.appendChild(_child);
-            _mvc.destructureView(_view);
-            _result = _mvc.restructureView('one');
+      it('homogenizes inner views of the same name', function () {
+        var _view, _child1, _child2, _result;
 
-            expect(_result.children[0].children.length).toBe(_slice);
-          }
-        });
+        _view = _elem('view');
+        _view.name = 'one';
+        _child1 = _elem('view');
+        _child1.name = 'two';
+        _child1.textContent = 'Hello';
+        _child2 = _elem('view');
+        _child2.name = 'two';
+        _child2.textContent = 'World';
+        _view.appendChild(_child1);
+        _view.appendChild(_child2);
+        _mvc.destructureView(_view);
+        _result = _mvc.restructureView('one');
 
-        it('strips contents of elements with `bindtext` or `bindhtml` specified', function() {
-          var _view, _child, _result;
+        expect(_result.children[0].textContent).toBe('Hello');
+        expect(_result.children[1].textContent).toBe('Hello');
+      });
 
+      it('squashes contents of elements with `bindchildren`', function () {
+        var _view, _child, _result;
+        var _count = 3; _slice = 1;
+
+        // Squash to single child, two children, three children
+        for (var _slice = 1; _slice <= _count; _slice++) {
           _view = _elem('view');
           _view.name = 'one';
           _child = _elem('div');
-          _child.bindText = 'SomeExpression';
-          _child.textContent = 'Hello World';
+          _child.bindChildren = _slice;
+          for (var i = 0; i < _count * _slice; i++) {
+            _child.appendChild(_elem('div'));
+          }
           _view.appendChild(_child);
           _mvc.destructureView(_view);
           _result = _mvc.restructureView('one');
 
-          expect(_result.children[0].textContent).toBe('');
+          expect(_result.children[0].children.length).toBe(_slice);
+        }
+      });
 
-          _child.bindText = undefined;
-          _child.bindHtml = 'SomeExpression';
-          _child.innerHTML = '<span>Hello World</span>';
-          _mvc.destructureView(_view);
-          _result = _mvc.restructureView('one');
-          
-          expect(_result.children[0].innerHTML).toBe('');
-        });
+      it('strips contents of elements with `bindtext` or `bindhtml` specified', function () {
+        var _view, _child, _result;
+
+        _view = _elem('view');
+        _view.name = 'one';
+        _child = _elem('div');
+        _child.bindText = 'SomeExpression';
+        _child.textContent = 'Hello World';
+        _view.appendChild(_child);
+        _mvc.destructureView(_view);
+        _result = _mvc.restructureView('one');
+
+        expect(_result.children[0].textContent).toBe('');
+
+        _child.bindText = undefined;
+        _child.bindHtml = 'SomeExpression';
+        _child.innerHTML = '<span>Hello World</span>';
+        _mvc.destructureView(_view);
+        _result = _mvc.restructureView('one');
+
+        expect(_result.children[0].innerHTML).toBe('');
+      });
 
     });
 
-    describe('restructuring', function() {
-        
-        it('fails to restructure view trees with missing outer dependencies due to supplantment', function() {
-            var _view, _child, _supplantor, _result;
+    describe('restructuring', function () {
 
-            _view =_elem('view');
-            _view.name = 'one';
-            _child =_elem('view');
-            _child.name = 'two';
-            _child.outer = 'one';
-            _view.appendChild(_child);
-            _mvc.destructureView(_view);
-            _result = _mvc.restructureView('two');
-            expect(_result).toBeDefined();
-            _supplantor =_elem('view');
-            _supplantor.name = 'one';
-            _mvc.destructureView(_supplantor);
+      it('fails to restructure view trees with missing outer dependencies due to supplantment', function () {
+        var _view, _child, _supplantor, _result;
 
-            _result = _mvc.restructureView('one');
-            expect(_result).toBeDefined();
-            _result = _mvc.restructureView('two');
-            expect(_result).toBeUndefined();
-        });
-        
-        it('fails to restructure view trees with misplaced outer dependents due to supplantment', function() {
-            var _view, _child, _supplantor, _result;
+        _view = _elem('view');
+        _view.name = 'one';
+        _child = _elem('view');
+        _child.name = 'two';
+        _child.outer = 'one';
+        _view.appendChild(_child);
+        _mvc.destructureView(_view);
+        _result = _mvc.restructureView('two');
+        expect(_result).toBeDefined();
+        _supplantor = _elem('view');
+        _supplantor.name = 'one';
+        _mvc.destructureView(_supplantor);
 
-            _view =_elem('view');
-            _view.name = 'one';
-            _mvc.destructureView(_view);
-            _result = _mvc.restructureView('one');
-            expect(_result).toBeDefined();
+        _result = _mvc.restructureView('one');
+        expect(_result).toBeDefined();
+        _result = _mvc.restructureView('two');
+        expect(_result).toBeUndefined();
+      });
 
-            _supplantor =_elem('view');
-            _supplantor.name = 'one';
-            _child =_elem('view');
-            _child.name = 'two';
-            _child.outer = 'one';
-            _supplantor.appendChild(_child);
-            _mvc.destructureView(_supplantor);
-            _result = _mvc.restructureView('two');
-            expect(_result).toBeDefined();
-            _result = _mvc.restructureView('one');
-            expect(_result).toBeUndefined();
-        });
+      it('fails to restructure view trees with misplaced outer dependents due to supplantment', function () {
+        var _view, _child, _supplantor, _result;
+
+        _view = _elem('view');
+        _view.name = 'one';
+        _mvc.destructureView(_view);
+        _result = _mvc.restructureView('one');
+        expect(_result).toBeDefined();
+
+        _supplantor = _elem('view');
+        _supplantor.name = 'one';
+        _child = _elem('view');
+        _child.name = 'two';
+        _child.outer = 'one';
+        _supplantor.appendChild(_child);
+        _mvc.destructureView(_supplantor);
+        _result = _mvc.restructureView('two');
+        expect(_result).toBeDefined();
+        _result = _mvc.restructureView('one');
+        expect(_result).toBeUndefined();
+      });
 
     });
 
     describe('binding', function () {
 
-      describe('`bindtext`', function() {
-      
-        it('should bind to textContent', function() {
+      describe('`bindtext`', function () {
+
+        it('should bind to textContent', function () {
           var _model, _view, _element;
 
           _mvc.defineModel('test');
           _model = _mvc.getModel('test');
           _model.initialize(_data);
-          _view =_elem('view');
-          _element =_elem('div');
+          _view = _elem('view');
+          _element = _elem('div');
           _element.setAttribute('bindtext', 'HTML');
           _view.appendChild(_element);
           _view.bind(_model.record());
-          
+
           expect(_element.textContent).toBe('<span>Hey</span>');
           expect(_element.innerHTML).toBe('&lt;span&gt;Hey&lt;/span&gt;');
         });
 
       });
 
-      describe('`bindhtml`', function() {
-      
-        it('should bind to innerHTML', function() {
+      describe('`bindhtml`', function () {
+
+        it('should bind to innerHTML', function () {
           var _model, _view, _element;
 
           _mvc.defineModel('test');
           _model = _mvc.getModel('test');
           _model.initialize(_data);
-          _view =_elem('view');
-          _element =_elem('div');
+          _view = _elem('view');
+          _element = _elem('div');
           _element.setAttribute('bindhtml', 'HTML');
           _view.appendChild(_element);
           _view.bind(_model.record());
-          
+
           expect(_element.innerHTML).toBe('<span>Hey</span>');
           expect(_element.textContent).toBe('Hey');
         });
@@ -466,13 +466,13 @@ describe("mvc", function () {
           var _model, _record, _view, _child, _children = [],
               keep = 1, total = 3, _eaches;
 
-          _view =_elem('view');
+          _view = _elem('view');
           _view.setAttribute('name', 'test-view');
           _view.setAttribute('model', 'test-model');
           _view.setAttribute('bindchildren', keep);
           _view.setAttribute('bindeach', 'Items');
           for (var i = 0; i < total; i++) {
-            _child =_elem('div');
+            _child = _elem('div');
             _child.setAttribute('bindtext', 'Name');
             _view.appendChild(_child);
             _children[i] = _child;
@@ -494,13 +494,13 @@ describe("mvc", function () {
         it('should bind slices of elements greater than 1', function () {
           var _model, _record, _view, _child, _children = [], slice = 2, total = 6;
 
-          _view =_elem('view');
+          _view = _elem('view');
           _view.setAttribute('name', 'test-view');
           _view.setAttribute('model', 'test-model');
           _view.setAttribute('bindchildren', slice);
           _view.setAttribute('bindeach', 'Items');
           for (var i = 0; i < total; i++) {
-            _child =_elem('div');
+            _child = _elem('div');
             _child.setAttribute('bindtext', 'Name');
             _view.appendChild(_child);
             _children[i] = _child;
@@ -523,13 +523,13 @@ describe("mvc", function () {
         it('should bind and insert elements as needed', function () {
           var _model, _record, _view, _child, _children = [], slice = 2, total = 6;
 
-          _view =_elem('view');
+          _view = _elem('view');
           _view.setAttribute('name', 'test-view');
           _view.setAttribute('model', 'test-model');
           _view.setAttribute('bindchildren', slice);
           _view.setAttribute('bindeach', 'Items');
           for (var i = 0; i < total; i++) {
-            _child =_elem('div');
+            _child = _elem('div');
             _child.setAttribute('bindtext', 'Name');
             _view.appendChild(_child);
             _children[i] = _child;
@@ -553,13 +553,13 @@ describe("mvc", function () {
         it('should remove extraneous elements as needed', function () {
           var _model, _record, _view, _child, _children = [], slice = 2, total = 6;
 
-          _view =_elem('view');
+          _view = _elem('view');
           _view.setAttribute('name', 'test-view');
           _view.setAttribute('model', 'test-model');
           _view.setAttribute('bindchildren', slice);
           _view.setAttribute('bindeach', 'Items');
           for (var i = 0; i < total; i++) {
-            _child =_elem('div');
+            _child = _elem('div');
             _child.setAttribute('bindtext', 'Name');
             _view.appendChild(_child);
             _children[i] = _child;
@@ -580,35 +580,35 @@ describe("mvc", function () {
       });
 
       describe('`bindnone`', function () {
-        
-        it('should skip binding for elements and descendants', function() {
+
+        it('should skip binding for elements and descendants', function () {
           var _model, _view, _branch1, _branch2, _branch3, _element;
 
           _mvc.defineModel('test');
           _model = _mvc.getModel('test');
           _model.initialize(_data);
 
-          _view =_elem('view');
+          _view = _elem('view');
 
-          _branch1 =_elem('div');
+          _branch1 = _elem('div');
           _branch1.setAttribute('bindtext', 'Hello');
           _view.appendChild(_branch1);
 
-          _branch2 =_elem('div');
-          _element =_elem('div');
+          _branch2 = _elem('div');
+          _element = _elem('div');
           _element.setAttribute('bindtext', 'Hello');
           _branch2.appendChild(_element);
           _view.appendChild(_branch2);
 
-          _branch3 =_elem('div');
+          _branch3 = _elem('div');
           _branch3.setAttribute('bindnone', '');
-          _element =_elem('div');
+          _element = _elem('div');
           _element.setAttribute('bindtext', 'Hello');
           _branch3.appendChild(_element);
           _view.appendChild(_branch3);
 
           _view.bind(_model.record());
-          
+
           expect(_view.children[0].textContent).toBe('World');
           expect(_view.children[1].children[0].textContent).toBe('World');
           expect(_view.children[2].children[0].textContent).toBe('');
@@ -616,28 +616,28 @@ describe("mvc", function () {
 
       });
 
-      describe('`bindattr-hidden` and `hidden`', function() {
-      
-        it('should skip binding for elements and descendants', function() {
+      describe('`bindattr-hidden` and `hidden`', function () {
+
+        it('should skip binding for elements and descendants', function () {
           var _model, _view, _branch1, _branch2, _element;
 
           _mvc.defineModel('test');
           _model = _mvc.getModel('test');
           _data.Hidden = true;
           _model.initialize(_data);
-          _view =_elem('view');
-          _branch1 =_elem('div');
+          _view = _elem('view');
+          _branch1 = _elem('div');
           _branch1.setAttribute('bindtext', 'Hello');
           _branch1.setAttribute('hidden', '');
           _view.appendChild(_branch1);
-          _branch2 =_elem('div');
+          _branch2 = _elem('div');
           _branch2.setAttribute('bindattr-hidden', 'Hidden');
-          _element =_elem('div');
+          _element = _elem('div');
           _element.setAttribute('bindtext', 'Hello');
           _branch2.appendChild(_element);
           _view.appendChild(_branch2);
           _view.bind(_model.record());
-          
+
           expect(_view.children[0].textContent).toBe('');
           expect(_view.children[1].children[0].textContent).toBe('');
         });
@@ -645,32 +645,32 @@ describe("mvc", function () {
       });
 
       describe('`bindattr-*`', function () {
-        
-        it('should bind attributes except `bindattr-*`', function() {
+
+        it('should bind attributes except `bindattr-*`', function () {
           var _model, _view, _element;
 
           _mvc.defineModel('test');
           _model = _mvc.getModel('test');
           _model.initialize(_data);
-          _view =_elem('view');
-          _element =_elem('div');
+          _view = _elem('view');
+          _element = _elem('div');
           _element.setAttribute('bindattr-class', 'Hello');
           _element.setAttribute('bindattr-bindattr-class', 'Hello');
           _view.appendChild(_element);
           _view.bind(_model.record());
-          
+
           expect(_element.getAttribute('bindattr-class')).toBe('Hello');
           expect(_element.getAttribute('class')).toBe('World');
         });
-        
-        it('should skip binding `name`, `outer`, `model`, and `scope` for views', function() {
+
+        it('should skip binding `name`, `outer`, `model`, and `scope` for views', function () {
           var _model, _view;
 
           _mvc.defineModel('test');
           _model = _mvc.getModel('test');
           _model.initialize(_data);
 
-          _view =_elem('view');
+          _view = _elem('view');
           _view.setAttribute('name', 'test');
           _view.setAttribute('outer', 'layout');
           _view.setAttribute('bindattr-class', 'Hello');
@@ -679,7 +679,7 @@ describe("mvc", function () {
           _view.setAttribute('bindattr-model', 'Hello');
           _view.setAttribute('bindattr-scope', 'Hello');
           _view.bind(_model.record());
-          
+
           expect(_view.getAttribute('class')).toBe('World');
           expect(_view.getAttribute('name')).toBe('test');
           expect(_view.getAttribute('outer')).toBe('layout');
@@ -687,7 +687,7 @@ describe("mvc", function () {
           expect(_view.hasAttribute('scope')).toBe(false);
         });
 
-        it('should map `bindattr-value` to IDL `value` where present', function() {
+        it('should map `bindattr-value` to IDL `value` where present', function () {
           var _view, _model, _input;
 
           // 'value'
@@ -705,7 +705,7 @@ describe("mvc", function () {
           expect(_input.value).toBe('Everybody');
         });
 
-        it('should map `bindattr-checked` to IDL `checked` where present', function() {
+        it('should map `bindattr-checked` to IDL `checked` where present', function () {
           var _view, _model, _input;
 
           // 'value'
@@ -723,7 +723,7 @@ describe("mvc", function () {
           expect(_input.checked).toBe(true);
         });
 
-        it('should interpret true/false/undefined as attribute presence', function() {
+        it('should interpret true/false/undefined as attribute presence', function () {
           var _view, _child, _grandchild;
 
           // true
@@ -739,7 +739,7 @@ describe("mvc", function () {
           _data['undefined'] = undefined;
           _model.initialize(_data);
           _view.bind(_model.record());
-          
+
           expect(_child.getAttribute('data-true')).toBe('');
           expect(_child.hasAttribute('data-false')).toBe(false);
           expect(_child.hasAttribute('data-undefined')).toBe(false);
@@ -748,7 +748,7 @@ describe("mvc", function () {
       });
 
     });
-  
+
   });
 
 });
