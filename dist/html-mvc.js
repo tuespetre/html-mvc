@@ -224,31 +224,6 @@ function model(_record) {
   });
 }
 
-function modelStore() {
-  var _models = {};
-
-  return Object.create(null, {
-
-    'getModel': {
-      value: function (name) {
-        if (typeof name !== 'string' || !name) return;
-        if (_models[name]) return _models[name];
-        _models[name] = model(record(data({})));
-        return _models[name];
-      }
-    },
-
-    'defineModel': {
-      value: function (name) {
-        if (typeof name === 'string' && name) {
-          _models[name] = model(record(data({})));
-        }
-      }
-    }
-
-  });
-}
-
 function viewCache(appName, appVersion) {
   var _views = {};
   // TODO: Use template string or something, it just doesn't 'feel right'
@@ -514,8 +489,8 @@ function transitionView(next, current) {
 }
 
 function mvc(appName, appVersion) {
-  var persistentModels = modelStore(),
-      transientModels = modelStore(),
+  var persistentModels = {},
+      transientModels = {},
       cachedViews = viewCache(appName, appVersion);
       
   var anonymous = model(record(data({})));
@@ -530,8 +505,15 @@ function mvc(appName, appVersion) {
 
     'getModel': {
       value: function(name) {
-        return transientModels.getModel(name)
-            || persistentModels.getModel(name);
+        var _model = 
+          transientModels[name] || 
+          persistentModels[name];
+
+        if (!_model) {
+          _model = persistentModels[name] = model(record(data({})));
+        }
+
+        return _model;
       }
     },
 
@@ -541,7 +523,7 @@ function mvc(appName, appVersion) {
           ? persistentModels
           : transientModels;
 
-        modelStore.defineModel(name);
+        modelStore[name] = model(record(data({})));
       }
     },
 
@@ -559,14 +541,15 @@ function mvc(appName, appVersion) {
 
     'transitionView': {
       value: transitionView
-    },
+    }
 
   });
 
   return instance;
 }
 
-function transition(href, title, targetView, targetModel, method, sendRequest) {
+function transition(window, document, history, href, title, targetView, targetModel, method, sendRequest) {
+
   function fallback() {
     window.location.href = href;
   }
@@ -581,7 +564,7 @@ function transition(href, title, targetView, targetModel, method, sendRequest) {
     history.pushState(state, state.title, href);
     document.title = state.title;
     
-    var modelName = currentView.model,
+    var modelName = document.currentView.model,
         record = modelName 
           ? document.mvc.getModel(modelName).record() 
           : document.mvc.anonymousModel().record();
@@ -623,6 +606,7 @@ function transition(href, title, targetView, targetModel, method, sendRequest) {
   else {
     transition(restructuredView, currentView);
   }
+
 }
 // TODO: Implement actual compliant parsing algorithm
 function parseContentTypeHeader(header) {
@@ -752,7 +736,7 @@ function constructFormDataSet(form, submitter) {
       (field.tagName === 'BUTTON' && submitter && field !== submitter) ||
       (field.type === 'checkbox' && !field.checked) ||
       (field.type === 'radio' && !field.checked) ||
-      (field.type === 'image' && !field.getAttribute('name'))
+      (field.type !== 'image' && !field.getAttribute('name'))
       // Can't really check if object is using plugin?
     ) {
       continue;
@@ -821,7 +805,7 @@ function constructFormDataSet(form, submitter) {
   return formDataSet;
 }
 
-function urlEncodeFormData(data) {  
+function urlEncodeFormDataSet(data) {  
   var result = '';
   for (var i = 0; i < data.length; i++) {
     var datum = data[i];
@@ -1197,17 +1181,20 @@ var document_descriptors = {
 
 };
 // This also does some stuff with form submitting elements
-function extendHyperlinkNavigation(e) {
+function extendHyperlinkNavigation(window, document, history, event) {
   if (!('pushState' in history)) return;
 
-  var target = e.target,
+  var target = event.target,
       name = target.tagName,
       currentView;
 
   // Handle navigation-causing clicks
   if (name === 'A' || name === 'AREA') {
-    e.preventDefault();      
+    event.preventDefault();      
     transition(
+      window,
+      document,
+      history,
       target.href,
       target.title,
       target.view,
@@ -1227,7 +1214,7 @@ function extendHyperlinkNavigation(e) {
   }
 };
 
-function extendFormSubmission(e) {
+function extendFormSubmission(window, document, history, e) {
   if (!('pushState' in history)) return;
 
   var target = e.target,
@@ -1264,6 +1251,9 @@ function extendFormSubmission(e) {
     
     e.preventDefault();
     transition(
+      window,
+      document,
+      history,
       action,
       null,
       view,
@@ -1273,7 +1263,7 @@ function extendFormSubmission(e) {
   }
 };
 
-function extendHistoryTraversal(e) {
+function extendHistoryTraversal(window, document, history, e) {
   var state = e.state;
 
   if (state && state.__fromMvc === true) {
@@ -1288,6 +1278,13 @@ function extendHistoryTraversal(e) {
     else {
       document.title = state.title;
       document.mvc.transitionView(restructured, currentView);
+    
+      var modelName = document.currentView.model,
+          record = modelName 
+            ? document.mvc.getModel(modelName).record() 
+            : document.mvc.anonymousModel().record();
+        
+      document.currentView.bind(record);
     }
 
     e.preventDefault();
@@ -1296,7 +1293,7 @@ function extendHistoryTraversal(e) {
   }
 };
 
-function initializeMvc() {
+function initializeMvc(window, document, history) {
   
   var instance = document.mvc;
   
@@ -1341,7 +1338,15 @@ Object.defineProperties(HTMLElement.prototype, element_descriptors);
 Object.defineProperties(HTMLUnknownElement.prototype, view_descriptors);
 Object.defineProperties(HTMLDocument.prototype, document_descriptors);
 
-window.addEventListener('DOMContentLoaded', initializeMvc);
-window.addEventListener('click', extendHyperlinkNavigation);
-window.addEventListener('submit', extendFormSubmission);
-window.addEventListener('popstate', extendHistoryTraversal);})(window, document, history);
+window.addEventListener('DOMContentLoaded', function(e) {
+  initializeMvc(window, document, history);
+});
+window.addEventListener('click', function(e) {
+  extendHyperlinkNavigation(window, document, history, e);
+});
+window.addEventListener('submit', function(e) {
+  extendFormSubmission(window, document, history, e);
+});
+window.addEventListener('popstate', function(e) {
+  extendHistoryTraversal(window, document, history, e);
+});})(window, document, history);

@@ -30,7 +30,7 @@ function constructFormDataSet(form, submitter) {
       (field.tagName === 'BUTTON' && submitter && field !== submitter) ||
       (field.type === 'checkbox' && !field.checked) ||
       (field.type === 'radio' && !field.checked) ||
-      (field.type === 'image' && !field.getAttribute('name'))
+      (field.type !== 'image' && !field.getAttribute('name'))
       // Can't really check if object is using plugin?
     ) {
       continue;
@@ -99,7 +99,7 @@ function constructFormDataSet(form, submitter) {
   return formDataSet;
 }
 
-function urlEncodeFormData(data) {  
+function urlEncodeFormDataSet(data) {  
   var result = '';
   for (var i = 0; i < data.length; i++) {
     var datum = data[i];

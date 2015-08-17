@@ -45,7 +45,7 @@ describe('form serialization', function () {
     _control.value = '<Cruel> / (World)';
     _form.appendChild(_control);
     _result = constructFormDataSet(_form);
-    _result = urlEncodeFormData(_result);
+    _result = urlEncodeFormDataSet(_result);
 
     expect(_result).toBe('Hello=World&Goodbye=%3CCruel%3E%20%2F%20(World)');
   });
@@ -826,6 +826,77 @@ describe("mvc", function () {
 
       });
 
+    });
+
+  });
+
+  describe('hyperlink navigation', function () {
+  
+    it('should not prevent default when pushState is not available', function () {
+      var _link, _event;
+
+      _link = _elem('a');
+      _link.href = '/Some/Url';
+      _link.view = 'target';
+      _event = {
+        target: _link,
+        preventDefault: function () {
+          this.defaultPrevented = true;
+        },
+        defaultPrevented: false
+      };
+      extendHyperlinkNavigation(
+        { location: ''}, 
+        document, 
+        {}, 
+        _event);
+
+      expect(_event.defaultPrevented).toBe(false);
+    });
+  
+    it('should prevent default when pushState is available', function () {
+      var _link, _event;
+
+      _link = _elem('a');
+      _link.href = '/Some/Url';
+      _event = {
+        target: _link,
+        preventDefault: function () {
+          this.defaultPrevented = true;
+        },
+        defaultPrevented: false
+      };
+      extendHyperlinkNavigation(
+        { location: ''}, 
+        document, 
+        history, 
+        _event);
+
+      expect(_event.defaultPrevented).toBe(true);
+    });
+  
+    it('should change window.location.href when view cannot be restructured', function () {
+      var _link, _event, _window;
+
+      _link = _elem('a');
+      _link.href = '/Some/Url';
+      _link.view = 'target';
+      _window = { location: new URL('http://www.test.com') };
+      _event = {
+        target: _link,
+        preventDefault: function () {
+          this.defaultPrevented = true;
+        },
+        defaultPrevented: false
+      };
+      extendHyperlinkNavigation(
+        _window, 
+        document, 
+        history, 
+        _event);
+
+      expect(_window.location.pathname).toBe('/Some/Url');
+      expect(_event.defaultPrevented).toBe(true);
     });
 
   });

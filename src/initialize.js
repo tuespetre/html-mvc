@@ -8,7 +8,15 @@ Object.defineProperties(HTMLElement.prototype, element_descriptors);
 Object.defineProperties(HTMLUnknownElement.prototype, view_descriptors);
 Object.defineProperties(HTMLDocument.prototype, document_descriptors);
 
-window.addEventListener('DOMContentLoaded', initializeMvc);
-window.addEventListener('click', extendHyperlinkNavigation);
-window.addEventListener('submit', extendFormSubmission);
-window.addEventListener('popstate', extendHistoryTraversal);
+window.addEventListener('DOMContentLoaded', function(e) {
+  initializeMvc(window, document, history);
+});
+window.addEventListener('click', function(e) {
+  extendHyperlinkNavigation(window, document, history, e);
+});
+window.addEventListener('submit', function(e) {
+  extendFormSubmission(window, document, history, e);
+});
+window.addEventListener('popstate', function(e) {
+  extendHistoryTraversal(window, document, history, e);
+});

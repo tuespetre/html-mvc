@@ -1,15 +1,18 @@
 // This also does some stuff with form submitting elements
-function extendHyperlinkNavigation(e) {
+function extendHyperlinkNavigation(window, document, history, event) {
   if (!('pushState' in history)) return;
 
-  var target = e.target,
+  var target = event.target,
       name = target.tagName,
       currentView;
 
   // Handle navigation-causing clicks
   if (name === 'A' || name === 'AREA') {
-    e.preventDefault();      
+    event.preventDefault();      
     transition(
+      window,
+      document,
+      history,
       target.href,
       target.title,
       target.view,
@@ -29,7 +32,7 @@ function extendHyperlinkNavigation(e) {
   }
 };
 
-function extendFormSubmission(e) {
+function extendFormSubmission(window, document, history, e) {
   if (!('pushState' in history)) return;
 
   var target = e.target,
@@ -66,6 +69,9 @@ function extendFormSubmission(e) {
     
     e.preventDefault();
     transition(
+      window,
+      document,
+      history,
       action,
       null,
       view,
@@ -75,7 +81,7 @@ function extendFormSubmission(e) {
   }
 };
 
-function extendHistoryTraversal(e) {
+function extendHistoryTraversal(window, document, history, e) {
   var state = e.state;
 
   if (state && state.__fromMvc === true) {
@@ -90,6 +96,13 @@ function extendHistoryTraversal(e) {
     else {
       document.title = state.title;
       document.mvc.transitionView(restructured, currentView);
+    
+      var modelName = document.currentView.model,
+          record = modelName 
+            ? document.mvc.getModel(modelName).record() 
+            : document.mvc.anonymousModel().record();
+        
+      document.currentView.bind(record);
     }
 
     e.preventDefault();
@@ -98,7 +111,7 @@ function extendHistoryTraversal(e) {
   }
 };
 
-function initializeMvc() {
+function initializeMvc(window, document, history) {
   
   var instance = document.mvc;
   

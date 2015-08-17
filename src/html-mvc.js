@@ -224,31 +224,6 @@ function model(_record) {
   });
 }
 
-function modelStore() {
-  var _models = {};
-
-  return Object.create(null, {
-
-    'getModel': {
-      value: function (name) {
-        if (typeof name !== 'string' || !name) return;
-        if (_models[name]) return _models[name];
-        _models[name] = model(record(data({})));
-        return _models[name];
-      }
-    },
-
-    'defineModel': {
-      value: function (name) {
-        if (typeof name === 'string' && name) {
-          _models[name] = model(record(data({})));
-        }
-      }
-    }
-
-  });
-}
-
 function viewCache(appName, appVersion) {
   var _views = {};
   // TODO: Use template string or something, it just doesn't 'feel right'
@@ -514,8 +489,8 @@ function transitionView(next, current) {
 }
 
 function mvc(appName, appVersion) {
-  var persistentModels = modelStore(),
-      transientModels = modelStore(),
+  var persistentModels = {},
+      transientModels = {},
       cachedViews = viewCache(appName, appVersion);
       
   var anonymous = model(record(data({})));
@@ -530,8 +505,15 @@ function mvc(appName, appVersion) {
 
     'getModel': {
       value: function(name) {
-        return transientModels.getModel(name)
-            || persistentModels.getModel(name);
+        var _model = 
+          transientModels[name] || 
+          persistentModels[name];
+
+        if (!_model) {
+          _model = persistentModels[name] = model(record(data({})));
+        }
+
+        return _model;
       }
     },
 
@@ -541,7 +523,7 @@ function mvc(appName, appVersion) {
           ? persistentModels
           : transientModels;
 
-        modelStore.defineModel(name);
+        modelStore[name] = model(record(data({})));
       }
     },
 
@@ -559,14 +541,15 @@ function mvc(appName, appVersion) {
 
     'transitionView': {
       value: transitionView
-    },
+    }
 
   });
 
   return instance;
 }
 
-function transition(href, title, targetView, targetModel, method, sendRequest) {
+function transition(window, document, history, href, title, targetView, targetModel, method, sendRequest) {
+
   function fallback() {
     window.location.href = href;
   }
@@ -581,7 +564,7 @@ function transition(href, title, targetView, targetModel, method, sendRequest) {
     history.pushState(state, state.title, href);
     document.title = state.title;
     
-    var modelName = currentView.model,
+    var modelName = document.currentView.model,
         record = modelName 
           ? document.mvc.getModel(modelName).record() 
           : document.mvc.anonymousModel().record();
@@ -623,4 +606,5 @@ function transition(href, title, targetView, targetModel, method, sendRequest) {
   else {
     transition(restructuredView, currentView);
   }
+
 }
