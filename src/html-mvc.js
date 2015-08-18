@@ -767,7 +767,13 @@ function mvc (services, appName, appVersion) {
       };
       
       history.pushState(state, state.title, href);      
-      transientModels = newTransientModels;
+      transientModels = {};
+      for (var name in newTransientModels) {
+        var newModel = newTransientModels[name];
+        instance.defineModel(name, newModel.persistent);
+        var model = instance.getModel(name);
+        model.initialize(newModel.object);
+      }
       document.title = state.title;
       instance.transitionView(restructuredView, currentView);
       internals.snapshotState();
@@ -791,13 +797,7 @@ function mvc (services, appName, appVersion) {
         
         if (!result[targetModel]) return fallback();
         
-        var newTransientModels = {};
-        for (var name in result) {
-          var _model = model(result[name], internals.snapshotState);
-          newTransientModels[name] = _model;
-        }
-        
-        transition(restructuredView, currentView, newTransientModels);
+        transition(restructuredView, currentView, result);
       }
       req.onerror = function() {
         return fallback();

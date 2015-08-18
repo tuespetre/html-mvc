@@ -88,7 +88,10 @@ function parseMultipartJsonResponse(contentType, body) {
       var model = header.parameters['model'];
       if (!model) continue gather_models;
       try {
-        models[model] = JSON.parse(part.body);
+        models[model] = {
+          object: JSON.parse(part.body),
+          persistent: 'persistent' in header.parameters
+        }
       } catch(err) {}
     }
     
