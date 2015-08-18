@@ -1,13 +1,5 @@
-(function(window, document, history){/*
-
-Requires:
-- pushState
-- FormData
-- xhr.send(FormData)
-
-*/
-
-function collection(_array) {
+(function(window, document, history){'use strict';
+function collection (_array) {
   _array = _array.slice(0);
   var _records = null,
       _interface = Object.create(null, {
@@ -55,7 +47,7 @@ function collection(_array) {
   });
 }
 
-function data(_object) {
+function data (_object) {
   var _scopes = {},
       _collections = {},
       _values = {};
@@ -111,7 +103,7 @@ function data(_object) {
   };
 }
 
-function record(_data) {
+function record (_data) {
   var _scopes = {};
 
   return Object.create(null, {
@@ -162,7 +154,7 @@ function record(_data) {
   });
 }
 
-function merge(_old, _new) {
+function merge (_old, _new) {
   for (var value in _old.values) {
     if (!(value in _new.values)) {
       _new.values[value] = _old.values[value];
@@ -198,7 +190,7 @@ function merge(_old, _new) {
   return _new;
 }
 
-function model(_record) {
+function model (_record) {
   var state = { record: _record };
 
   return Object.create(null, {
@@ -224,7 +216,7 @@ function model(_record) {
   });
 }
 
-function viewCache(appName, appVersion) {
+function viewCache (appName, appVersion) {
   var _views = {};
   // TODO: Use template string or something, it just doesn't 'feel right'
   var _keyPrefix = 'htmlmvc|views|' + 
@@ -256,7 +248,7 @@ function viewCache(appName, appVersion) {
 
     'set': {
       value: function (name, view) {
-        if (!(view instanceof HTMLElement) || view.tagName !== 'VIEW') return;
+        if (!is_view(view)) return;
         _views[name] = view.cloneNode(true);
         localStorage.setItem(key(name), view.outerHTML);
       }
@@ -265,22 +257,11 @@ function viewCache(appName, appVersion) {
   });
 }
 
-function findL1Descendants(element) {
-  var descs = [];
-  var child = element.children[0];
-  if (!child) return descs;
-  do {
-    if (child.tagName === 'VIEW') {
-      descs.push(child);
-    }
-    else {
-      descs = descs.concat(findL1Descendants(child));
-    }
-  } while (child = child.nextElementSibling);
-  return descs;
+function inner_views (element) {
+  return select_descendants(element, is_view, not_view);
 }
 
-function processBindingAttributes(element) {
+function processBindingAttributes (element) {
   if (element.hasAttribute('bindnone')) {
     return;
   }
@@ -314,9 +295,9 @@ function processBindingAttributes(element) {
   }
 }
 
-function destructureViewRecursive(view, destructured, recursion, context) {
+function destructureViewRecursive (view, destructured, recursion, context) {
   // Step 1. Inner views
-  var innerViews = findL1Descendants(view);
+  var innerViews = inner_views(view);
   // Step 2.
   if (!innerViews.length) return true;
   // Step 3.
@@ -375,7 +356,7 @@ function destructureViewRecursive(view, destructured, recursion, context) {
   return true;
 }
 
-function destructureView(view, viewCache) {
+function destructureView (view, viewCache) {
   if (!(view instanceof HTMLElement) || view.tagName !== 'VIEW') return false;
   var name = view.name;
   if (!name) return false;
@@ -400,12 +381,12 @@ function destructureView(view, viewCache) {
   return context.targetView;
 }
 
-function restructureView(name, viewCache) {
+function restructureView (name, viewCache) {
   var cached = viewCache.get(name);
   if (!cached) return;
   // Resolve inners
-  function resolveInners(view) {
-    var descs = findL1Descendants(view);
+  function resolveInners (view) {
+    var descs = inner_views(view);
     for (var i = 0; i < descs.length; i++) {
       var inner = descs[i];
       var cached = viewCache.get(inner.name);
@@ -418,7 +399,7 @@ function restructureView(name, viewCache) {
     return true;
   };
 
-  function resolveOuters(view) {
+  function resolveOuters (view) {
     var outer = view.outer;
     if (!outer) return true;
     var cached = viewCache.get(outer);
@@ -426,7 +407,7 @@ function restructureView(name, viewCache) {
     var outersResolved = resolveOuters(cached);
     if (!outersResolved) return false;
     var foundGeneric = false;
-    var descs = findL1Descendants(cached);
+    var descs = inner_views(cached);
     for (var i = 0; i < descs.length; i++) {
       var inner = descs[i];
       var innerOuter = inner.outer;
@@ -454,57 +435,58 @@ function restructureView(name, viewCache) {
   }
 }
 
-function transitionView(next, current) {
-  var isValid = function (obj) {
-    return obj instanceof HTMLElement && obj.tagName === 'VIEW';
+function transition_view (next, current, currentRecord, getRecord) {
+  if (next.name != current.name) {
+    swap_element(next, current);
+    bind_views([ next ], currentRecord, getRecord);
   }
-  if (!isValid(next) || !isValid(current)) return;
-  function swap(next, current) {
-    current.parentNode.replaceChild(next, current);
-  }
-  function transitionImpl(next, current) {
-    if (next.name != current.name) {
-      swap(next, current);
-      return;
+  else {
+    var next_descendants    = inner_views(next),
+        current_descendants = inner_views(current);
+    
+    if (next_descendants.length != current_descendants.length) {
+      swap_element(next, current);
+      bind_views([ next ], currentRecord, getRecord);
     }
-    var descs_next = findL1Descendants(next);
-    var descs_curr = findL1Descendants(current);
-    if (descs_next.length != descs_curr.length) {
-      swap(next, current);
-      return;
-    }
-    for (var i = 0; i < descs_curr.length; i++) {
-      var desc_n = descs_next[i],
-          desc_c = descs_curr[i];
-
-      if (desc_n.name != desc_c.name) {
-        swap(desc_n, desc_c);
-      }
-      else {
-        transitionImpl(desc_n, desc_c);
+    else {
+      currentRecord = getRecord(current, currentRecord);
+      // Just re-bind this view if necessary but don't
+      // bother to collect its inner views again.
+      bind_element(current, currentRecord, false);
+        
+      for (var i = 0; i < current_descendants.length; i++) {
+        transition_view(
+          next_descendants[i], 
+          current_descendants[i],
+          currentRecord,
+          getRecord);
       }
     }
   }
-  transitionImpl(next, current);
 }
 
-function mvc(appName, appVersion) {
+function mvc (services, appName, appVersion) {
   var persistentModels = {},
       transientModels = {},
       cachedViews = viewCache(appName, appVersion);
       
   var anonymous = model(record(data({})));
+  
+  var getRecord = function (view, currentRecord) {
+    var modelName = view.model,
+        scopeName = view.scope;
+        
+    return modelName
+      ? this.getModel(modelName).record()
+      : currentRecord && scopeName
+        ? currentRecord.scope(scopeName)
+        : currentRecord;
+  };
 
   var instance = Object.create(null, {
-  
-    'anonymousModel': {
-      value: function() {
-        return anonymous;
-      }
-    },
 
     'getModel': {
-      value: function(name) {
+      value: function (name) {
         var _model = 
           transientModels[name] || 
           persistentModels[name];
@@ -518,7 +500,7 @@ function mvc(appName, appVersion) {
     },
 
     'defineModel': {
-      value: function(name, persistent) {
+      value: function (name, persistent) {
         var modelStore = persistent === true
           ? persistentModels
           : transientModels;
@@ -528,33 +510,171 @@ function mvc(appName, appVersion) {
     },
 
     'destructureView': {
-      value: function(view) {
+      value: function (view) {
         return destructureView(view, cachedViews);
       }
     },
 
     'restructureView': {
-      value: function(name) {
+      value: function (name) {
         return restructureView(name, cachedViews);
       }
     },
 
     'transitionView': {
-      value: transitionView
+      value: function (into, from) {
+        if (!is_view(into) || !is_view(from)) return;
+        transition_view(into, from, anonymous.record(), getRecord.bind(this));
+      }
+    },
+    
+    'bindView': {
+      value: function (view) {
+        bind_views([ view ], anonymous.record(), getRecord.bind(this));
+      }
     }
 
   });
 
-  return instance;
+  var internals = {
+  
+    attach: function (window) {
+      window.addEventListener('popstate', this.extendHistoryTraversal);
+      window.addEventListener('click', this.extendHyperlinkNavigation);
+      window.addEventListener('submit', this.extendFormSubmission);
+    },
+  
+    detach: function (window) {
+      window.removeEventListener('popstate', this.extendHistoryTraversal);
+      window.removeEventListener('click', this.extendHyperlinkNavigation);
+      window.removeEventListener('submit', this.extendFormSubmission);
+    },
+    
+    extendHistoryTraversal: function (event) {    
+      var state = event.state,
+          document = services.document,
+          location = services.location;
+
+      if (state && state.__fromMvc === true) {
+        var targetView = state.targetView,
+            currentView = document.currentView,
+            restructured = instance.restructureView(targetView);
+
+        if (!restructured || !currentView) {
+          location.replace(location.href);
+          return;
+        }
+        else {
+          document.title = state.title;
+          instance.transitionView(restructured, currentView);
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+      }
+    },
+    
+    extendHyperlinkNavigation: function (event) {
+      var history = services.history;
+      if (!('pushState' in history)) return;
+
+      var target = event.target,
+          name = target.tagName,
+          currentView;
+
+      // Handle navigation-causing clicks
+      if (name === 'A' || name === 'AREA') {
+        event.preventDefault();      
+        transition(
+          services,
+          target.href,
+          target.title,
+          target.view,
+          target.model,
+          'GET',
+          function(req) {
+            req.send();
+          });
+      }
+      // Handle submission-causing clicks
+      else if (
+        (name === 'INPUT' && (target.type === 'submit' || target.type === 'image')) ||
+        (name === 'BUTTON' && (target.type === 'submit'))
+      ) {
+        if (!target.form) return;
+        target.form.__triggeringElement = target;
+      }
+    },
+    
+    extendFormSubmission: function (event) {
+      var location = services.location;
+      var history = services.history;
+      
+      if (!('pushState' in history)) return;
+
+      var target = event.target,
+          name = target.tagName,
+          currentView;
+
+      if (name === 'FORM') {
+        var submitter = target.__triggeringElement,
+            view = submitter ? submitter.formview || target.view : target.view,
+            model = submitter ? submitter.formmodel || target.model : target.model,
+            action = (submitter ? submitter.formaction || target.action : target.action) || location.href,
+            enctype = submitter ? submitter.formenctype || target.enctype : target.enctype,
+            _target = submitter ? submitter.formtarget || target.target : target.target,
+            method = submitter ? submitter.formmethod || target.method : target.method;
+
+        if (!view || (_target && _target !== '_self')) return;
+        
+        var sendRequest = function(req) {
+          var data = new FormData(target);
+          if (submitter) {
+            data.append(submitter.name, submitter.value);
+          }
+          req.send(data);
+        }
+        
+        if (method === 'get') {
+          var data = constructFormDataSet(target, submitter);
+          action = new URL(action);
+          action.search = urlEncodeFormDataSet(data);
+          sendRequest = function(req) { 
+            req.send(); 
+          };
+        }
+        
+        event.preventDefault();
+        transition(
+          services,
+          action,
+          null,
+          view,
+          model,
+          method,
+          sendRequest);
+      }
+    }
+
+  };
+
+  return {
+    instance: instance,
+    internals: internals
+  };
 }
 
-function transition(window, document, history, href, title, targetView, targetModel, method, sendRequest) {
-
+function transition (services, href, title, targetView, targetModel, method, sendRequest) {
+  var location = services.location;
+  var history = services.history;
+  var document = services.document;
+  
   function fallback() {
-    window.location.href = href;
+    location.assign(href);
   }
   
-  function transition(restructuredView, currentView) {   
+  function transition(restructuredView, currentView) {
     document.mvc.transitionView(restructuredView, currentView);
     var state = {
       targetView: targetView,
@@ -563,13 +683,6 @@ function transition(window, document, history, href, title, targetView, targetMo
     };
     history.pushState(state, state.title, href);
     document.title = state.title;
-    
-    var modelName = document.currentView.model,
-        record = modelName 
-          ? document.mvc.getModel(modelName).record() 
-          : document.mvc.anonymousModel().record();
-      
-    document.currentView.bind(record);
   }
   
   var currentView = document.currentView;
@@ -607,6 +720,196 @@ function transition(window, document, history, href, title, targetView, targetMo
     transition(restructuredView, currentView);
   }
 
+}
+function select_descendants (element, select, recurse) {
+  var elements = [];
+  for (var i = 0; i < element.children.length; i++) {
+    var child = element.children[i];
+    if (select(child)) {
+      elements.push(child);
+    }
+    if (recurse(child)) {
+      var descendants = select_descendants(child, select, recurse);
+      elements.push.apply(elements, descendants);
+    }
+  }
+  return elements;
+}
+
+function is_view (element) {
+  return element.tagName === 'VIEW';
+}
+
+function not_view (element) {
+  return element.tagName !== 'VIEW';
+}
+
+function swap_element(next, current) {
+  current.parentNode.replaceChild(next, current);
+}
+
+function bind_attribute (element, name, value) {      
+  if (value === true) {
+    element.setAttribute(name, '');
+  }
+  else if (value === false || typeof value === 'undefined') {
+    element.removeAttribute(name);
+  }
+  else {
+    element.setAttribute(name, value);
+  }
+}
+
+function bind_control (element, name, value) {
+  // Should probably do some further writing and assessment
+  // About how forms and their controls are to be handled.
+  // Only want to work with attribute names, NOT IDL names
+  // (looking at you, React.)
+  if (typeof value === 'undefined') value = null;
+  
+  if (name === 'value' && 'value' in element) {
+    element.value = value;
+  }
+  else if (name === 'checked' && 'checked' in element) {
+    element.checked = new Boolean(value);
+  }
+}
+
+function bind_attributes (element, record) {
+  var pattern = element.tagName === 'VIEW'
+    ? /^\s*bindattr-((?!bindattr|(bindeach|bindtext|bindhtml|bindnone|model|scope|outer|name)\s*$)[A-Za-z0-9_-]+)\s*$/
+    : /^\s*bindattr-((?!bindattr|(bindeach|bindtext|bindhtml|bindnone)\s*$)[A-Za-z0-9_-]+)\s*$/;
+
+  for (var i = 0; i < element.attributes.length; i++) {
+    var attribute = element.attributes[i];
+    var allowed = pattern.exec(attribute.name);
+    if (!allowed) continue;
+    var name = allowed[1];
+    var value = record.value(attribute.value);
+    bind_attribute(element, name, value);
+    bind_control(element, name, value);
+  }
+}
+
+function bind_hidden (element, record) {
+  var bindHidden = element.getAttribute('bindattr-hidden');
+  if (bindHidden !== null) {
+    var val = record.value(bindHidden);
+    if (val === false || typeof val === 'undefined') {
+      element.removeAttribute('hidden');
+    }
+    else {
+      element.setAttribute('hidden', val);
+    }
+  }
+}
+
+function bind_each (element, collection) {
+  var slice = element.bindChildren;
+  if (slice === Infinity || slice === 0) return;
+  var childrenLength = element.children.length;
+  if (childrenLength === 0) return;
+  var sample = [];
+
+  record_loop:
+    for (var i = 0; i < collection.length; i++) {
+      var record = collection[i];
+
+      slice_loop:
+        for (var j = 0; j < slice; j++) {
+          var insert = false,
+              child = element.children[(i * slice) + j],
+              original = child;
+
+          if (child && i < slice) {
+            sample[j] = child.cloneNode(true);
+          }
+          else if (!child) {
+            child = sample[j];
+            if (!child) break record_loop;
+            child = child.cloneNode(true);
+            insert = true;
+          }
+
+          bind_element(child, record);
+
+          if (insert) {
+            var nextElem;
+            if (original && (nextElem = original.nextElementSibling))
+              element.insertBefore(child, nextElem);
+            else
+              element.appendChild(child);
+          }
+        }
+    }
+
+  while (element.children.length > collection.length * slice) {
+    element.removeChild(element.lastChild);
+  }
+}
+
+/* Returns an array of non-hidden L1 descendant views that have yet to be bound */
+function bind_element (element, record) {
+  var views = [];
+  
+  // If 'bindnone', skip processing descendants
+  if (element.bindNone) return;
+  
+  // Apply any 'hidden' binding so we know if we can skip descendants
+  bind_hidden(element, record);
+  if (element.hidden) return;
+
+  // If it's a view and we've already bound it, crawl through
+  // descendants just to find L1 inner views
+  if (is_view(element) && record === element.boundRecord) {
+    return select_descendants(element, is_view, 
+      function recurse (element) {
+        return !element.hidden && !element.bindEach;
+      });
+  }
+  
+  bind_attributes(element, record);
+
+  element.boundRecord = record;
+  var bindText, bindHtml, bindEach;
+  
+  if (bindText = element.bindText) {
+    element.textContent = record.value(bindText);
+  }
+  else if (bindHtml = element.bindHtml) {
+    element.innerHTML = record.value(bindHtml);
+  }
+  else if (bindEach = element.bindEach) {
+    var collection = record.collection(bindEach);
+    bind_each(element, collection);
+  }
+  else {
+    var child = element.children[0];
+    if (child) {
+      do {
+        if (is_view(child)) {      
+          views.push(child);
+        }
+        else {
+          views.push.apply(views, bind_element(child, record));
+        }
+      } while (child = child.nextElementSibling);
+    }
+  }
+  
+  return views;
+};
+
+function bind_views (views, currentRecord, getRecord) {
+  for (var i = 0; i < views.length; i++) {
+    var view   = views[i],
+        record = getRecord(view, currentRecord);
+          
+    bind_views(
+      bind_element(view, record, true), 
+      record,
+      getRecord);
+  }
 }
 // TODO: Implement actual compliant parsing algorithm
 function parseContentTypeHeader(header) {
@@ -816,486 +1119,249 @@ function urlEncodeFormDataSet(data) {
   }
   return result;
 }
-var anchor_area_form_descriptors = {
+function createNodeDescriptors () {
 
-  'view': {
-    get: function () {
-      return this.getAttribute('view');
-    },
-    set: function (value) {
-      return this.setAttribute('view', value);
-    }
-  },
-
-  'model': {
-    get: function () {
-      return this.getAttribute('model');
-    },
-    set: function (value) {
-      return this.setAttribute('model', value);
-    }
-  }
-
-};
-
-var input_button_descriptors = {
-
-  'formview': {
-    get: function () {
-      return this.getAttribute('formview');
-    },
-    set: function (value) {
-      return this.setAttribute('view', value);
-    }
-  },
-
-  'formmodel': {
-    get: function () {
-      return this.getAttribute('formmodel');
-    },
-    set: function (value) {
-      return this.setAttribute('model', value);
-    }
-  }
-
-};
-
-var script_descriptors = {
-
-  'model': {
-    get: function () {
-      return this.getAttribute('model');
-    }
-  }
+  return {
   
-};
+    anchor_area_form: {
 
-var element_descriptors = {
+      'view': {
+        get: function () {
+          return this.getAttribute('view');
+        },
+        set: function (value) {
+          return this.setAttribute('view', value);
+        }
+      },
 
-  'bindText': {
-    get: function () {
-      return this.getAttribute('bindtext');
+      'model': {
+        get: function () {
+          return this.getAttribute('model');
+        },
+        set: function (value) {
+          return this.setAttribute('model', value);
+        }
+      }
+
     },
-    set: function (value) {
-      if (typeof value === 'undefined') {
-        this.removeAttribute('bindtext');
-      }
-      else {
-        this.setAttribute('bindtext', value);
-      }
-    }
-  },
 
-  'bindHtml': {
-    get: function () {
-      return this.getAttribute('bindhtml');
+    input_button: {
+
+      'formview': {
+        get: function () {
+          return this.getAttribute('formview');
+        },
+        set: function (value) {
+          return this.setAttribute('view', value);
+        }
+      },
+
+      'formmodel': {
+        get: function () {
+          return this.getAttribute('formmodel');
+        },
+        set: function (value) {
+          return this.setAttribute('model', value);
+        }
+      }
+
     },
-    set: function (value) {
-      if (typeof value === 'undefined') {
-        this.removeAttribute('bindhtml');
-      }
-      else {
-        this.setAttribute('bindhtml', value);
-      }
-    }
-  },
 
-  'bindEach': {
-    get: function () {
-      return this.getAttribute('bindeach');
+    script: {
+
+      'model': {
+        get: function () {
+          return this.getAttribute('model');
+        }
+      }
+      
     },
-    set: function (value) {
-      if (typeof value === 'undefined') {
-        this.removeAttribute('bindeach');
-      }
-      else {
-        this.setAttribute('bindeach', value);
-      }
-    }
-  },
 
-  'bindNone': {
-    get: function () {
-      return this.hasAttribute('bindnone');
-    },
-    set: function (value) {
-      if (value === true) {
-        this.setAttribute('bindnone', 'bindnone');
-      }
-      else if (value === false || typeof value === 'undefined') {
-        this.removeAttribute('bindnone');
-      }
-    }
-  },
+    element: {
 
-  'bindChildren': {
-    get: function () {
-      var bindChildren = parseInt(this.getAttribute('bindchildren'));
-      return isNaN(bindChildren) || bindChildren < 0 ? Infinity : bindChildren;
-    },
-    set: function (value) {
-      if (isNaN(value)) {
-        throw new TypeError('bindChildren must be a number');
-      }
-      this.setAttribute('bindchildren', value);
-    }
-  }
-
-};
-
-var view_descriptors = {
-
-  'name': {
-    get: function () {
-      return this.getAttribute('name');
-    },
-    set: function(value) {
-      if (typeof value === 'undefined') {
-        this.removeAttribute('name');
-      }
-      else {
-        this.setAttribute('name', value);
-      }
-    }
-  },
-
-  'outer': {
-    get: function () {
-      return this.getAttribute('outer');
-    },
-    set: function(value) {
-      if (typeof value === 'undefined') {
-        this.removeAttribute('outer');
-      }
-      else {
-        this.setAttribute('outer', value);
-      }
-    }
-  },
-
-  'model': {
-    get: function () {
-      return this.getAttribute('model');
-    },
-    set: function(value) {
-      if (typeof value === 'undefined') {
-        this.removeAttribute('model');
-      }
-      else {
-        this.setAttribute('model', value);
-      }
-    }
-  },
-
-  'scope': {
-    get: function () {
-      return this.getAttribute('scope');
-    },
-    set: function(value) {
-      if (typeof value === 'undefined') {
-        this.removeAttribute('scope');
-      }
-      else {
-        this.setAttribute('scope', value);
-      }
-    }
-  },
-
-  'bind': {
-    value: function (record) {
-      function bind(element, record) {
-        if (!record || element.bindNone) return;
-        var bindHidden = element.getAttribute('bindattr-hidden');
-        if (bindHidden !== null) {
-          var val = record.value(bindHidden);
-          if (val === false || typeof val === 'undefined') {
-            element.removeAttribute('hidden');
+      'bindText': {
+        get: function () {
+          return this.getAttribute('bindtext');
+        },
+        set: function (value) {
+          if (typeof value === 'undefined') {
+            this.removeAttribute('bindtext');
           }
           else {
-            element.setAttribute('hidden', val);
+            this.setAttribute('bindtext', value);
           }
         }
-        if (element.hidden) return;
+      },
 
-        var skipNonView = element.tagName === 'VIEW' && record === element.boundRecord;
-        var bindAttrPattern = element.tagName === 'VIEW'
-          ? /^\s*bindattr-((?!bindattr|(bindeach|bindtext|bindhtml|bindnone|model|scope|outer|name)\s*$)[A-Za-z0-9_-]+)\s*$/
-          : /^\s*bindattr-((?!bindattr|(bindeach|bindtext|bindhtml|bindnone)\s*$)[A-Za-z0-9_-]+)\s*$/;
-          
-        function setControlValue(element, attrname, value) {
-          // Should probably do some further writing and assessment
-          // About how forms and their controls are to be handled.
-          // Only want to work with attribute names, NOT IDL names
-          // (looking at you, React.)
-          if (typeof value === 'undefined') value = null;
-          
-          if (attrname === 'value' && 'value' in element) {
-            element.value = value;
-          }
-          else if (attrname === 'checked' && 'checked' in element) {
-            element.checked = new Boolean(value);
-          }
-        }
-
-        for (var i = 0; i < element.attributes.length; i++) {
-          var attr = element.attributes[i];
-          var match = bindAttrPattern.exec(attr.name);
-          if (!match) continue;
-          var name = match[1];
-          var val = record.value(attr.value);
-          
-          if (val === true) {
-            element.setAttribute(name, '');
-          }
-          else if (val === false || typeof val === 'undefined') {
-            element.removeAttribute(name);
+      'bindHtml': {
+        get: function () {
+          return this.getAttribute('bindhtml');
+        },
+        set: function (value) {
+          if (typeof value === 'undefined') {
+            this.removeAttribute('bindhtml');
           }
           else {
-            element.setAttribute(name, val);
-          }
-          
-          setControlValue(element, name, val);
-        }
-
-        var bindText, bindHtml, bindEach;
-
-        element.boundRecord = record;
-        if (bindText = element.bindText) {
-          element.textContent = record.value(bindText);
-        }
-        else if (bindHtml = element.bindHtml) {
-          element.innerHTML = record.value(bindHtml);
-        }
-        else if (bindEach = element.bindEach) {
-          var slice = element.bindChildren;
-          if (slice === Infinity || slice === 0) return;
-          var collection = record.collection(bindEach);
-          var childrenLength = element.children.length;
-          if (childrenLength === 0) return;
-          var surpassedChildren = false;
-          var sample = [];
-
-          record_loop:
-            for (var i = 0; i < collection.length; i++) {
-              var record = collection[i];
-
-              slice_loop:
-                for (var j = 0; j < slice; j++) {
-                  var insert = false,
-                      child = element.children[(i * slice) + j],
-                      original = child;
-
-                  if (child && i < slice) {
-                    sample[j] = child.cloneNode(true);
-                  }
-                  else if (!child) {
-                    child = sample[j];
-                    if (!child) break record_loop;
-                    child = child.cloneNode(true);
-                    insert = true;
-                  }
-
-                  bind(child, record);
-
-                  if (insert) {
-                    var nextElem;
-                    if (original && (nextElem = original.nextElementSibling))
-                      element.insertBefore(child, nextElem);
-                    else
-                      element.appendChild(child);
-                  }
-                }
-            }
-
-          while (element.children.length > collection.length * slice) {
-            element.removeChild(element.lastChild);
+            this.setAttribute('bindhtml', value);
           }
         }
-        else if (skipNonView) {
-          var descs = findL1Descendants(element);
-          for (var i = 0; i < descs.length; i++) {
-            var child = descs[i];
-            var modelName = child.model,
-                bindRecord = modelName
-                  ? document.mvc.getModel(modelName).record()
-                  : child.scope
-                    ? record.scope(child.scope)
-                    : record;
-                    
-            bind(child, bindRecord);
+      },
+
+      'bindEach': {
+        get: function () {
+          return this.getAttribute('bindeach');
+        },
+        set: function (value) {
+          if (typeof value === 'undefined') {
+            this.removeAttribute('bindeach');
+          }
+          else {
+            this.setAttribute('bindeach', value);
           }
         }
-        else {
-          var child = element.children[0];
+      },
+
+      'bindNone': {
+        get: function () {
+          return this.hasAttribute('bindnone');
+        },
+        set: function (value) {
+          if (value === true) {
+            this.setAttribute('bindnone', 'bindnone');
+          }
+          else if (value === false || typeof value === 'undefined') {
+            this.removeAttribute('bindnone');
+          }
+        }
+      },
+
+      'bindChildren': {
+        get: function () {
+          var bindChildren = parseInt(this.getAttribute('bindchildren'));
+          return isNaN(bindChildren) || bindChildren < 0 ? Infinity : bindChildren;
+        },
+        set: function (value) {
+          if (isNaN(value)) {
+            throw new TypeError('bindChildren must be a number');
+          }
+          this.setAttribute('bindchildren', value);
+        }
+      }
+
+    },
+
+    view: {
+
+      'name': {
+        get: function () {
+          return this.getAttribute('name');
+        },
+        set: function(value) {
+          if (typeof value === 'undefined') {
+            this.removeAttribute('name');
+          }
+          else {
+            this.setAttribute('name', value);
+          }
+        }
+      },
+
+      'outer': {
+        get: function () {
+          return this.getAttribute('outer');
+        },
+        set: function(value) {
+          if (typeof value === 'undefined') {
+            this.removeAttribute('outer');
+          }
+          else {
+            this.setAttribute('outer', value);
+          }
+        }
+      },
+
+      'model': {
+        get: function () {
+          return this.getAttribute('model');
+        },
+        set: function(value) {
+          if (typeof value === 'undefined') {
+            this.removeAttribute('model');
+          }
+          else {
+            this.setAttribute('model', value);
+          }
+        }
+      },
+
+      'scope': {
+        get: function () {
+          return this.getAttribute('scope');
+        },
+        set: function(value) {
+          if (typeof value === 'undefined') {
+            this.removeAttribute('scope');
+          }
+          else {
+            this.setAttribute('scope', value);
+          }
+        }
+      }
+
+    },
+
+    document: {
+
+      'currentView': {
+        get: function () {
+          var child = this.body.firstChild;
           if (!child) return;
           do {
-            if (child.tagName === 'VIEW') {
-              var modelName = child.model,
-                  bindRecord = modelName
-                    ? document.mvc.getModel(modelName).record()
-                    : child.scope
-                      ? record.scope(child.scope)
-                      : record;
-                      
-              bind(child, bindRecord);
+            if (child.nodeType === Node.ELEMENT_NODE && child.tagName === 'VIEW') {
+              return child;
             }
-            else {
-              bind(child, record);
-            }
-          } while (child = child.nextElementSibling);
+          } while (child = child.nextSibling);
         }
-      };
-      
-      bind(this, record);
-    }
-  }
-
-};
-
-var document_descriptors = {
-
-  'mvc': {
-    get: function () {
-      if (!this.__mvcInstance) {
-        var name = this.head.querySelector('meta[name=application-name]');
-        var version = this.head.querySelector('meta[name=application-version]');
-        name && (name = name.content);
-        version && (version = version.content);
-        this.__mvcInstance = mvc(name, version);
       }
-      return this.__mvcInstance;
+
     }
-  },
-
-  'currentView': {
-    get: function () {
-      var child = this.body.firstChild;
-      if (!child) return;
-      do {
-        if (child.nodeType === Node.ELEMENT_NODE && child.tagName === 'VIEW') {
-          return child;
-        }
-      } while (child = child.nextSibling);
-    }
-  }
-
-};
-// This also does some stuff with form submitting elements
-function extendHyperlinkNavigation(window, document, history, event) {
-  if (!('pushState' in history)) return;
-
-  var target = event.target,
-      name = target.tagName,
-      currentView;
-
-  // Handle navigation-causing clicks
-  if (name === 'A' || name === 'AREA') {
-    event.preventDefault();      
-    transition(
-      window,
-      document,
-      history,
-      target.href,
-      target.title,
-      target.view,
-      target.model,
-      'GET',
-      function(req) {
-        req.send();
-      });
-  }
-  // Handle submission-causing clicks
-  else if (
-    (name === 'INPUT' && (target.type === 'submit' || target.type === 'image')) ||
-    (name === 'BUTTON' && (target.type === 'submit'))
-  ) {
-    if (!target.form) return;
-    target.form.__triggeringElement = target;
-  }
-};
-
-function extendFormSubmission(window, document, history, e) {
-  if (!('pushState' in history)) return;
-
-  var target = e.target,
-      name = target.tagName,
-      currentView;
-
-  if (name === 'FORM') {
-    var submitter = target.__triggeringElement,
-        view = submitter ? submitter.formview || target.view : target.view,
-        model = submitter ? submitter.formmodel || target.model : target.model,
-        action = (submitter ? submitter.formaction || target.action : target.action) || window.location.href,
-        enctype = submitter ? submitter.formenctype || target.enctype : target.enctype,
-        _target = submitter ? submitter.formtarget || target.target : target.target,
-        method = submitter ? submitter.formmethod || target.method : target.method;
-
-    if (!view || (_target && _target !== '_self')) return;
-    
-    var sendRequest = function(req) {
-      var data = new FormData(target);
-      if (submitter) {
-        data.append(submitter.name, submitter.value);
-      }
-      req.send(data);
-    }
-    
-    if (method === 'get') {
-      var data = constructFormDataSet(target, submitter);
-      action = new URL(action);
-      action.search = urlEncodeFormDataSet(data);
-      sendRequest = function(req) { 
-        req.send(); 
-      };
-    }
-    
-    e.preventDefault();
-    transition(
-      window,
-      document,
-      history,
-      action,
-      null,
-      view,
-      model,
-      method,
-      sendRequest);
-  }
-};
-
-function extendHistoryTraversal(window, document, history, e) {
-  var state = e.state;
-
-  if (state && state.__fromMvc === true) {
-    var targetView = state.targetView,
-        currentView = document.currentView,
-        restructured = document.mvc.restructureView(targetView);
-
-    if (!restructured || !currentView) {
-      location.replace(location.href);
-      return;
-    }
-    else {
-      document.title = state.title;
-      document.mvc.transitionView(restructured, currentView);
-    
-      var modelName = document.currentView.model,
-          record = modelName 
-            ? document.mvc.getModel(modelName).record() 
-            : document.mvc.anonymousModel().record();
-        
-      document.currentView.bind(record);
-    }
-
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-  }
-};
-
-function initializeMvc(window, document, history) {
   
-  var instance = document.mvc;
+  }
+
+};
+var descriptors = createNodeDescriptors();
+
+Object.defineProperties(HTMLAnchorElement.prototype, descriptors.anchor_area_form);
+Object.defineProperties(HTMLAreaElement.prototype, descriptors.anchor_area_form);
+Object.defineProperties(HTMLFormElement.prototype, descriptors.anchor_area_form);
+Object.defineProperties(HTMLInputElement.prototype, descriptors.input_button);  
+Object.defineProperties(HTMLButtonElement.prototype, descriptors.input_button);
+Object.defineProperties(HTMLScriptElement.prototype, descriptors.script);
+Object.defineProperties(HTMLElement.prototype, descriptors.element);
+Object.defineProperties(HTMLUnknownElement.prototype, descriptors.view);
+Object.defineProperties(HTMLDocument.prototype, descriptors.document);
+
+var defaultServices = {
+    window:   window,
+    document: document,
+    history:  history,
+    location: location
+};
+  
+window.addEventListener('DOMContentLoaded', function(e) {  
+
+  var name = document.head.querySelector('meta[name=application-name]');
+    name && (name = name.content);
+  var version = document.head.querySelector('meta[name=application-version]');
+    version && (version = version.content);
+  var mvcInternal = mvc(defaultServices, name, version);
+  var mvcInstance = mvcInternal.instance;
+  
+  Object.defineProperty(HTMLDocument.prototype, 'mvc', {
+    get: function () {
+      return mvcInstance;
+    }
+  });
   
   // Register any declared models
   (function modelRegistration() {
@@ -1306,8 +1372,8 @@ function initializeMvc(window, document, history) {
       if (name) {
         try {
           var result = JSON.parse(script.textContent);
-          instance.defineModel(name, true);
-          var model = instance.getModel(name);
+          mvcInstance.defineModel(name, true);
+          var model = mvcInstance.getModel(name);
           model.initialize(result);
         } catch (err) { }
       }
@@ -1318,7 +1384,7 @@ function initializeMvc(window, document, history) {
   (function viewCaching() {
     var currentView = document.currentView;
     if (!currentView) return;
-    var name = instance.destructureView(currentView);
+    var name = mvcInstance.destructureView(currentView);
     var state = {
       targetView: name,
       title: document.title,
@@ -1327,26 +1393,6 @@ function initializeMvc(window, document, history) {
     history.replaceState(state, document.title, location.href);
   })();
   
-};
-Object.defineProperties(HTMLAnchorElement.prototype, anchor_area_form_descriptors);
-Object.defineProperties(HTMLAreaElement.prototype, anchor_area_form_descriptors);
-Object.defineProperties(HTMLFormElement.prototype, anchor_area_form_descriptors);
-Object.defineProperties(HTMLInputElement.prototype, input_button_descriptors);  
-Object.defineProperties(HTMLButtonElement.prototype, input_button_descriptors);
-Object.defineProperties(HTMLScriptElement.prototype, script_descriptors);
-Object.defineProperties(HTMLElement.prototype, element_descriptors);
-Object.defineProperties(HTMLUnknownElement.prototype, view_descriptors);
-Object.defineProperties(HTMLDocument.prototype, document_descriptors);
-
-window.addEventListener('DOMContentLoaded', function(e) {
-  initializeMvc(window, document, history);
-});
-window.addEventListener('click', function(e) {
-  extendHyperlinkNavigation(window, document, history, e);
-});
-window.addEventListener('submit', function(e) {
-  extendFormSubmission(window, document, history, e);
-});
-window.addEventListener('popstate', function(e) {
-  extendHistoryTraversal(window, document, history, e);
+  mvcInternal.internals.attach(window);
+  
 });})(window, document, history);

@@ -2,6 +2,25 @@ var _elem = function (tagName) {
   return document.createElement(tagName);
 };
 
+var _location = function (href) {
+  return Object.create(null, {
+    '_url': {
+      writable: true,
+      value: new URL(href)
+    },
+    'assign': {
+      value: function (href) {
+        this._url = new URL(href);
+      }
+    },
+    'pathname': {
+      get: function () {
+        return this._url.pathname;
+      }
+    }
+  });
+};
+
 describe('multipart/json parsing', function () {
 
   it('should parse content type headers with quotes', function () {
@@ -53,6 +72,7 @@ describe('form serialization', function () {
 });
 
 describe("mvc", function () {
+  var _mvcInternal;
   var _mvc;
   var _data;
   var _appName = 'testing';
@@ -62,7 +82,8 @@ describe("mvc", function () {
     // TODO: Inject a storage provider into the view cache
     // instead of using localStorage ad-hoc
     localStorage.clear();
-    _mvc = mvc(_appName, _appVer++);
+    _mvcInternal = mvc(defaultServices, _appName, _appVer++);
+    _mvc = _mvcInternal.instance;
     _data = {
       'Hello': 'World',
       'HTML': '<span>Hey</span>',
@@ -297,13 +318,14 @@ describe("mvc", function () {
         var _view, _child, _grandchild, _result;
 
         // One level deep
+        _mvc = mvc(_appName, _appVer++).instance;
         _view = _elem('view');
         _result = _mvc.destructureView(_view);
 
         expect(_result).toBe(false);
 
         // Two levels deep
-        _mvc = mvc(_appName, _appVer++);
+        _mvc = mvc(_appName, _appVer++).instance;
         _view = _elem('view');
         _view.name = 'one';
         _child = _elem('view');
@@ -314,7 +336,7 @@ describe("mvc", function () {
         expect(_result).toBe(false);
 
         // More than two levels deep
-        _mvc = mvc(_appName, _appVer++);
+        _mvc = mvc(_appName, _appVer++).instance;
         _view = _elem('view');
         _view.name = 'one';
         _child = _elem('view');
@@ -508,10 +530,11 @@ describe("mvc", function () {
           _model = _mvc.getModel('test');
           _model.initialize(_data);
           _view = _elem('view');
+          _view.model = 'test';
           _element = _elem('div');
           _element.setAttribute('bindtext', 'HTML');
           _view.appendChild(_element);
-          _view.bind(_model.record());
+          _mvc.bindView(_view);
 
           expect(_element.textContent).toBe('<span>Hey</span>');
           expect(_element.innerHTML).toBe('&lt;span&gt;Hey&lt;/span&gt;');
@@ -528,10 +551,11 @@ describe("mvc", function () {
           _model = _mvc.getModel('test');
           _model.initialize(_data);
           _view = _elem('view');
+          _view.model = 'test';
           _element = _elem('div');
           _element.setAttribute('bindhtml', 'HTML');
           _view.appendChild(_element);
-          _view.bind(_model.record());
+          _mvc.bindView(_view);
 
           expect(_element.innerHTML).toBe('<span>Hey</span>');
           expect(_element.textContent).toBe('Hey');
@@ -560,7 +584,7 @@ describe("mvc", function () {
           _mvc.defineModel('test-model');
           _model = _mvc.getModel('test-model');
           _model.initialize(_data);
-          _view.bind(_model.record());
+          _mvc.bindView(_view);
           _eaches = _model.record().collection('Items');
 
           expect(_view.children.length).toBe(3);
@@ -588,7 +612,7 @@ describe("mvc", function () {
           _mvc.defineModel('test-model');
           _model = _mvc.getModel('test-model');
           _model.initialize(_data);
-          _view.bind(_model.record());
+          _mvc.bindView(_view);
           _eaches = _model.record().collection('Items');
 
           expect(_view.children.length).toBe(6);
@@ -617,9 +641,9 @@ describe("mvc", function () {
           _mvc.defineModel('test-model');
           _model = _mvc.getModel('test-model');
           _model.initialize(_data);
-          _view.bind(_model.record());
+          _mvc.bindView(_view);
           _model.merge({ 'Items': [{ Name: 'Guitar' }] });
-          _view.bind(_model.record());
+          _mvc.bindView(_view);
 
           expect(_view.children.length).toBe(8);
           for (var i = 0; i < total; i++) {
@@ -647,9 +671,9 @@ describe("mvc", function () {
           _mvc.defineModel('test-model');
           _model = _mvc.getModel('test-model');
           _model.initialize(_data);
-          _view.bind(_model.record());
+          _mvc.bindView(_view);
           _model.initialize({ 'Items': [{ Name: 'Guitar' }] });
-          _view.bind(_model.record());
+          _mvc.bindView(_view);
 
           expect(_view.children.length).toBe(2);
           expect(_view.children[0].textContent).toBe('Guitar');
@@ -668,6 +692,7 @@ describe("mvc", function () {
           _model.initialize(_data);
 
           _view = _elem('view');
+          _view.model = 'test';
 
           _branch1 = _elem('div');
           _branch1.setAttribute('bindtext', 'Hello');
@@ -686,7 +711,7 @@ describe("mvc", function () {
           _branch3.appendChild(_element);
           _view.appendChild(_branch3);
 
-          _view.bind(_model.record());
+          _mvc.bindView(_view);
 
           expect(_view.children[0].textContent).toBe('World');
           expect(_view.children[1].children[0].textContent).toBe('World');
@@ -715,7 +740,7 @@ describe("mvc", function () {
           _element.setAttribute('bindtext', 'Hello');
           _branch2.appendChild(_element);
           _view.appendChild(_branch2);
-          _view.bind(_model.record());
+          _mvc.bindView(_view);
 
           expect(_view.children[0].textContent).toBe('');
           expect(_view.children[1].children[0].textContent).toBe('');
@@ -732,11 +757,12 @@ describe("mvc", function () {
           _model = _mvc.getModel('test');
           _model.initialize(_data);
           _view = _elem('view');
+          _view.model = 'test';
           _element = _elem('div');
           _element.setAttribute('bindattr-class', 'Hello');
           _element.setAttribute('bindattr-bindattr-class', 'Hello');
           _view.appendChild(_element);
-          _view.bind(_model.record());
+          _mvc.bindView(_view);
 
           expect(_element.getAttribute('bindattr-class')).toBe('Hello');
           expect(_element.getAttribute('class')).toBe('World');
@@ -750,6 +776,7 @@ describe("mvc", function () {
           _model.initialize(_data);
 
           _view = _elem('view');
+          _view.model = 'test';
           _view.setAttribute('name', 'test');
           _view.setAttribute('outer', 'layout');
           _view.setAttribute('bindattr-class', 'Hello');
@@ -757,12 +784,12 @@ describe("mvc", function () {
           _view.setAttribute('bindattr-outer', 'Hello');
           _view.setAttribute('bindattr-model', 'Hello');
           _view.setAttribute('bindattr-scope', 'Hello');
-          _view.bind(_model.record());
+          _mvc.bindView(_view);
 
           expect(_view.getAttribute('class')).toBe('World');
           expect(_view.getAttribute('name')).toBe('test');
           expect(_view.getAttribute('outer')).toBe('layout');
-          expect(_view.hasAttribute('model')).toBe(false);
+          expect(_view.getAttribute('model')).toBe('test');
           expect(_view.hasAttribute('scope')).toBe(false);
         });
 
@@ -771,6 +798,7 @@ describe("mvc", function () {
 
           // 'value'
           _view = _elem('view');
+          _view.model = 'test';
           _input = _elem('input');
           _input.type = 'input';
           _input.value = 'World';
@@ -779,7 +807,7 @@ describe("mvc", function () {
           _model = _mvc.getModel('test');
           _data.Hello = 'Everybody';
           _model.initialize(_data);
-          _view.bind(_model.record());
+          _mvc.bindView(_view);
 
           expect(_input.value).toBe('Everybody');
         });
@@ -789,6 +817,7 @@ describe("mvc", function () {
 
           // 'value'
           _view = _elem('view');
+          _view.model = 'test';
           _input = _elem('input');
           _input.type = 'checkbox';
           _input.checked = false;
@@ -797,7 +826,7 @@ describe("mvc", function () {
           _model = _mvc.getModel('test');
           _data.Hello = true;
           _model.initialize(_data);
-          _view.bind(_model.record());
+          _mvc.bindView(_view);
 
           expect(_input.checked).toBe(true);
         });
@@ -807,6 +836,7 @@ describe("mvc", function () {
 
           // true
           _view = _elem('view');
+          _view.model = 'test';
           _child = _elem('div');
           _child.setAttribute('bindattr-data-true', 'true');
           _child.setAttribute('bindattr-data-false', 'false');
@@ -817,7 +847,7 @@ describe("mvc", function () {
           _data['false'] = false;
           _data['undefined'] = undefined;
           _model.initialize(_data);
-          _view.bind(_model.record());
+          _mvc.bindView(_view);
 
           expect(_child.getAttribute('data-true')).toBe('');
           expect(_child.hasAttribute('data-false')).toBe(false);
@@ -833,7 +863,7 @@ describe("mvc", function () {
   describe('hyperlink navigation', function () {
   
     it('should not prevent default when pushState is not available', function () {
-      var _link, _event;
+      var _link, _event, _services;
 
       _link = _elem('a');
       _link.href = '/Some/Url';
@@ -845,17 +875,20 @@ describe("mvc", function () {
         },
         defaultPrevented: false
       };
-      extendHyperlinkNavigation(
-        { location: ''}, 
-        document, 
-        {}, 
-        _event);
+      _services = {
+        window: window,
+        document: document,
+        location: window.location,
+        history: {}
+      };
+      _mvcInternal = mvc(_services, _appName, _appVer++);
+      _mvcInternal.internals.extendHyperlinkNavigation(_event);
 
       expect(_event.defaultPrevented).toBe(false);
     });
   
     it('should prevent default when pushState is available', function () {
-      var _link, _event;
+      var _link, _event, _services;
 
       _link = _elem('a');
       _link.href = '/Some/Url';
@@ -866,22 +899,24 @@ describe("mvc", function () {
         },
         defaultPrevented: false
       };
-      extendHyperlinkNavigation(
-        { location: ''}, 
-        document, 
-        history, 
-        _event);
+      _services = {
+        window: {},
+        document: document,
+        location: _location(location.href),
+        history: window.history
+      };
+      _mvcInternal = mvc(_services, _appName, _appVer++);
+      _mvcInternal.internals.extendHyperlinkNavigation(_event);
 
       expect(_event.defaultPrevented).toBe(true);
     });
   
     it('should change window.location.href when view cannot be restructured', function () {
-      var _link, _event, _window;
+      var _link, _event, _services;
 
       _link = _elem('a');
       _link.href = '/Some/Url';
       _link.view = 'target';
-      _window = { location: new URL('http://www.test.com') };
       _event = {
         target: _link,
         preventDefault: function () {
@@ -889,13 +924,16 @@ describe("mvc", function () {
         },
         defaultPrevented: false
       };
-      extendHyperlinkNavigation(
-        _window, 
-        document, 
-        history, 
-        _event);
+      _services = {
+        window: {},
+        document: document,
+        location: _location(location.href),
+        history: window.history
+      };
+      _mvcInternal = mvc(_services, _appName, _appVer++);
+      _mvcInternal.internals.extendHyperlinkNavigation(_event);
 
-      expect(_window.location.pathname).toBe('/Some/Url');
+      expect(_services.location.pathname).toBe('/Some/Url');
       expect(_event.defaultPrevented).toBe(true);
     });
 

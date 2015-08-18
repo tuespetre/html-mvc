@@ -1,13 +1,4 @@
-/*
-
-Requires:
-- pushState
-- FormData
-- xhr.send(FormData)
-
-*/
-
-function collection(_array) {
+function collection (_array) {
   _array = _array.slice(0);
   var _records = null,
       _interface = Object.create(null, {
@@ -55,7 +46,7 @@ function collection(_array) {
   });
 }
 
-function data(_object) {
+function data (_object) {
   var _scopes = {},
       _collections = {},
       _values = {};
@@ -111,7 +102,7 @@ function data(_object) {
   };
 }
 
-function record(_data) {
+function record (_data) {
   var _scopes = {};
 
   return Object.create(null, {
@@ -162,7 +153,7 @@ function record(_data) {
   });
 }
 
-function merge(_old, _new) {
+function merge (_old, _new) {
   for (var value in _old.values) {
     if (!(value in _new.values)) {
       _new.values[value] = _old.values[value];
@@ -198,7 +189,7 @@ function merge(_old, _new) {
   return _new;
 }
 
-function model(_record) {
+function model (_record) {
   var state = { record: _record };
 
   return Object.create(null, {
@@ -224,7 +215,7 @@ function model(_record) {
   });
 }
 
-function viewCache(appName, appVersion) {
+function viewCache (appName, appVersion) {
   var _views = {};
   // TODO: Use template string or something, it just doesn't 'feel right'
   var _keyPrefix = 'htmlmvc|views|' + 
@@ -256,7 +247,7 @@ function viewCache(appName, appVersion) {
 
     'set': {
       value: function (name, view) {
-        if (!(view instanceof HTMLElement) || view.tagName !== 'VIEW') return;
+        if (!is_view(view)) return;
         _views[name] = view.cloneNode(true);
         localStorage.setItem(key(name), view.outerHTML);
       }
@@ -265,22 +256,11 @@ function viewCache(appName, appVersion) {
   });
 }
 
-function findL1Descendants(element) {
-  var descs = [];
-  var child = element.children[0];
-  if (!child) return descs;
-  do {
-    if (child.tagName === 'VIEW') {
-      descs.push(child);
-    }
-    else {
-      descs = descs.concat(findL1Descendants(child));
-    }
-  } while (child = child.nextElementSibling);
-  return descs;
+function inner_views (element) {
+  return select_descendants(element, is_view, not_view);
 }
 
-function processBindingAttributes(element) {
+function processBindingAttributes (element) {
   if (element.hasAttribute('bindnone')) {
     return;
   }
@@ -314,9 +294,9 @@ function processBindingAttributes(element) {
   }
 }
 
-function destructureViewRecursive(view, destructured, recursion, context) {
+function destructureViewRecursive (view, destructured, recursion, context) {
   // Step 1. Inner views
-  var innerViews = findL1Descendants(view);
+  var innerViews = inner_views(view);
   // Step 2.
   if (!innerViews.length) return true;
   // Step 3.
@@ -375,7 +355,7 @@ function destructureViewRecursive(view, destructured, recursion, context) {
   return true;
 }
 
-function destructureView(view, viewCache) {
+function destructureView (view, viewCache) {
   if (!(view instanceof HTMLElement) || view.tagName !== 'VIEW') return false;
   var name = view.name;
   if (!name) return false;
@@ -400,12 +380,12 @@ function destructureView(view, viewCache) {
   return context.targetView;
 }
 
-function restructureView(name, viewCache) {
+function restructureView (name, viewCache) {
   var cached = viewCache.get(name);
   if (!cached) return;
   // Resolve inners
-  function resolveInners(view) {
-    var descs = findL1Descendants(view);
+  function resolveInners (view) {
+    var descs = inner_views(view);
     for (var i = 0; i < descs.length; i++) {
       var inner = descs[i];
       var cached = viewCache.get(inner.name);
@@ -418,7 +398,7 @@ function restructureView(name, viewCache) {
     return true;
   };
 
-  function resolveOuters(view) {
+  function resolveOuters (view) {
     var outer = view.outer;
     if (!outer) return true;
     var cached = viewCache.get(outer);
@@ -426,7 +406,7 @@ function restructureView(name, viewCache) {
     var outersResolved = resolveOuters(cached);
     if (!outersResolved) return false;
     var foundGeneric = false;
-    var descs = findL1Descendants(cached);
+    var descs = inner_views(cached);
     for (var i = 0; i < descs.length; i++) {
       var inner = descs[i];
       var innerOuter = inner.outer;
@@ -454,57 +434,58 @@ function restructureView(name, viewCache) {
   }
 }
 
-function transitionView(next, current) {
-  var isValid = function (obj) {
-    return obj instanceof HTMLElement && obj.tagName === 'VIEW';
+function transition_view (next, current, currentRecord, getRecord) {
+  if (next.name != current.name) {
+    swap_element(next, current);
+    bind_views([ next ], currentRecord, getRecord);
   }
-  if (!isValid(next) || !isValid(current)) return;
-  function swap(next, current) {
-    current.parentNode.replaceChild(next, current);
-  }
-  function transitionImpl(next, current) {
-    if (next.name != current.name) {
-      swap(next, current);
-      return;
+  else {
+    var next_descendants    = inner_views(next),
+        current_descendants = inner_views(current);
+    
+    if (next_descendants.length != current_descendants.length) {
+      swap_element(next, current);
+      bind_views([ next ], currentRecord, getRecord);
     }
-    var descs_next = findL1Descendants(next);
-    var descs_curr = findL1Descendants(current);
-    if (descs_next.length != descs_curr.length) {
-      swap(next, current);
-      return;
-    }
-    for (var i = 0; i < descs_curr.length; i++) {
-      var desc_n = descs_next[i],
-          desc_c = descs_curr[i];
-
-      if (desc_n.name != desc_c.name) {
-        swap(desc_n, desc_c);
-      }
-      else {
-        transitionImpl(desc_n, desc_c);
+    else {
+      currentRecord = getRecord(current, currentRecord);
+      // Just re-bind this view if necessary but don't
+      // bother to collect its inner views again.
+      bind_element(current, currentRecord, false);
+        
+      for (var i = 0; i < current_descendants.length; i++) {
+        transition_view(
+          next_descendants[i], 
+          current_descendants[i],
+          currentRecord,
+          getRecord);
       }
     }
   }
-  transitionImpl(next, current);
 }
 
-function mvc(appName, appVersion) {
+function mvc (services, appName, appVersion) {
   var persistentModels = {},
       transientModels = {},
       cachedViews = viewCache(appName, appVersion);
       
   var anonymous = model(record(data({})));
+  
+  var getRecord = function (view, currentRecord) {
+    var modelName = view.model,
+        scopeName = view.scope;
+        
+    return modelName
+      ? this.getModel(modelName).record()
+      : currentRecord && scopeName
+        ? currentRecord.scope(scopeName)
+        : currentRecord;
+  };
 
   var instance = Object.create(null, {
-  
-    'anonymousModel': {
-      value: function() {
-        return anonymous;
-      }
-    },
 
     'getModel': {
-      value: function(name) {
+      value: function (name) {
         var _model = 
           transientModels[name] || 
           persistentModels[name];
@@ -518,7 +499,7 @@ function mvc(appName, appVersion) {
     },
 
     'defineModel': {
-      value: function(name, persistent) {
+      value: function (name, persistent) {
         var modelStore = persistent === true
           ? persistentModels
           : transientModels;
@@ -528,33 +509,171 @@ function mvc(appName, appVersion) {
     },
 
     'destructureView': {
-      value: function(view) {
+      value: function (view) {
         return destructureView(view, cachedViews);
       }
     },
 
     'restructureView': {
-      value: function(name) {
+      value: function (name) {
         return restructureView(name, cachedViews);
       }
     },
 
     'transitionView': {
-      value: transitionView
+      value: function (into, from) {
+        if (!is_view(into) || !is_view(from)) return;
+        transition_view(into, from, anonymous.record(), getRecord.bind(this));
+      }
+    },
+    
+    'bindView': {
+      value: function (view) {
+        bind_views([ view ], anonymous.record(), getRecord.bind(this));
+      }
     }
 
   });
 
-  return instance;
+  var internals = {
+  
+    attach: function (window) {
+      window.addEventListener('popstate', this.extendHistoryTraversal);
+      window.addEventListener('click', this.extendHyperlinkNavigation);
+      window.addEventListener('submit', this.extendFormSubmission);
+    },
+  
+    detach: function (window) {
+      window.removeEventListener('popstate', this.extendHistoryTraversal);
+      window.removeEventListener('click', this.extendHyperlinkNavigation);
+      window.removeEventListener('submit', this.extendFormSubmission);
+    },
+    
+    extendHistoryTraversal: function (event) {    
+      var state = event.state,
+          document = services.document,
+          location = services.location;
+
+      if (state && state.__fromMvc === true) {
+        var targetView = state.targetView,
+            currentView = document.currentView,
+            restructured = instance.restructureView(targetView);
+
+        if (!restructured || !currentView) {
+          location.replace(location.href);
+          return;
+        }
+        else {
+          document.title = state.title;
+          instance.transitionView(restructured, currentView);
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+      }
+    },
+    
+    extendHyperlinkNavigation: function (event) {
+      var history = services.history;
+      if (!('pushState' in history)) return;
+
+      var target = event.target,
+          name = target.tagName,
+          currentView;
+
+      // Handle navigation-causing clicks
+      if (name === 'A' || name === 'AREA') {
+        event.preventDefault();      
+        transition(
+          services,
+          target.href,
+          target.title,
+          target.view,
+          target.model,
+          'GET',
+          function(req) {
+            req.send();
+          });
+      }
+      // Handle submission-causing clicks
+      else if (
+        (name === 'INPUT' && (target.type === 'submit' || target.type === 'image')) ||
+        (name === 'BUTTON' && (target.type === 'submit'))
+      ) {
+        if (!target.form) return;
+        target.form.__triggeringElement = target;
+      }
+    },
+    
+    extendFormSubmission: function (event) {
+      var location = services.location;
+      var history = services.history;
+      
+      if (!('pushState' in history)) return;
+
+      var target = event.target,
+          name = target.tagName,
+          currentView;
+
+      if (name === 'FORM') {
+        var submitter = target.__triggeringElement,
+            view = submitter ? submitter.formview || target.view : target.view,
+            model = submitter ? submitter.formmodel || target.model : target.model,
+            action = (submitter ? submitter.formaction || target.action : target.action) || location.href,
+            enctype = submitter ? submitter.formenctype || target.enctype : target.enctype,
+            _target = submitter ? submitter.formtarget || target.target : target.target,
+            method = submitter ? submitter.formmethod || target.method : target.method;
+
+        if (!view || (_target && _target !== '_self')) return;
+        
+        var sendRequest = function(req) {
+          var data = new FormData(target);
+          if (submitter) {
+            data.append(submitter.name, submitter.value);
+          }
+          req.send(data);
+        }
+        
+        if (method === 'get') {
+          var data = constructFormDataSet(target, submitter);
+          action = new URL(action);
+          action.search = urlEncodeFormDataSet(data);
+          sendRequest = function(req) { 
+            req.send(); 
+          };
+        }
+        
+        event.preventDefault();
+        transition(
+          services,
+          action,
+          null,
+          view,
+          model,
+          method,
+          sendRequest);
+      }
+    }
+
+  };
+
+  return {
+    instance: instance,
+    internals: internals
+  };
 }
 
-function transition(window, document, history, href, title, targetView, targetModel, method, sendRequest) {
-
+function transition (services, href, title, targetView, targetModel, method, sendRequest) {
+  var location = services.location;
+  var history = services.history;
+  var document = services.document;
+  
   function fallback() {
-    window.location.href = href;
+    location.assign(href);
   }
   
-  function transition(restructuredView, currentView) {   
+  function transition(restructuredView, currentView) {
     document.mvc.transitionView(restructuredView, currentView);
     var state = {
       targetView: targetView,
@@ -563,13 +682,6 @@ function transition(window, document, history, href, title, targetView, targetMo
     };
     history.pushState(state, state.title, href);
     document.title = state.title;
-    
-    var modelName = document.currentView.model,
-        record = modelName 
-          ? document.mvc.getModel(modelName).record() 
-          : document.mvc.anonymousModel().record();
-      
-    document.currentView.bind(record);
   }
   
   var currentView = document.currentView;
