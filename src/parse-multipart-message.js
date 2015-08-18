@@ -12,7 +12,7 @@ function parseContentTypeHeader(header) {
       parameters[name] = unquoted.trim();
     }
     else {
-      parameters[name] = param[1].trim();
+      parameters[name] = (param[1] || '').trim();
     }
   }
   

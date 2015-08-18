@@ -39,6 +39,15 @@ describe('multipart/json parsing', function () {
     expect(result.parameters['model']).toBe('my-model');
   });
 
+  it('should parse content type header parameters without values', function () {
+    var quotedHeader = 'application/json;model=my-model;persistent';
+    var result = parseContentTypeHeader(quotedHeader);
+    expect(result.type).toBe('application/json');
+    expect(result.parameters['model']).toBeDefined();
+    expect(result.parameters['model']).toBe('my-model');
+    expect(result.parameters['persistent']).toBeDefined();
+  });
+
   it('should parse header sections', function () {
     var headerSection = 'Content-Type: application/json;model=my-model \r\n X-Other-Header: Some Value';
     var result = parseHeaderSection(headerSection);
