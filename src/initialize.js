@@ -31,6 +31,16 @@ window.addEventListener('DOMContentLoaded', function(e) {
       return mvcInstance;
     }
   });
+
+  // Find existing current view, if any, and destructure/cache it
+  (function viewCaching() {
+    var currentView = document.currentView;
+    if (!currentView) return;
+    history.replaceState({
+      targetView: mvcInstance.destructureView(currentView),
+      title: document.title
+    }, null);
+  })();
   
   // Register any declared models
   (function modelRegistration() {
@@ -48,20 +58,8 @@ window.addEventListener('DOMContentLoaded', function(e) {
       }
     }
   })();
-
-  // Find existing current view, if any, and destructure/cache it
-  (function viewCaching() {
-    var currentView = document.currentView;
-    if (!currentView) return;
-    var name = mvcInstance.destructureView(currentView);
-    var state = {
-      targetView: name,
-      title: document.title,
-      __fromMvc: true
-    };
-    history.replaceState(state, document.title, location.href);
-  })();
   
+  mvcInternal.internals.snapshotState();
   mvcInternal.internals.attach(window);
   
 });

@@ -1,4 +1,38 @@
 (function(window, document, history){'use strict';
+// Credit: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign
+if (!Object.assign) {
+  Object.defineProperty(Object, 'assign', {
+    enumerable: false,
+    configurable: true,
+    writable: true,
+    value: function(target) {
+      'use strict';
+      if (target === undefined || target === null) {
+        throw new TypeError('Cannot convert first argument to object');
+      }
+
+      var to = Object(target);
+      for (var i = 1; i < arguments.length; i++) {
+        var nextSource = arguments[i];
+        if (nextSource === undefined || nextSource === null) {
+          continue;
+        }
+        nextSource = Object(nextSource);
+
+        var keysArray = Object.keys(Object(nextSource));
+        for (var nextIndex = 0, len = keysArray.length; nextIndex < len; nextIndex++) {
+          var nextKey = keysArray[nextIndex];
+          var desc = Object.getOwnPropertyDescriptor(nextSource, nextKey);
+          if (desc !== undefined && desc.enumerable) {
+            to[nextKey] = nextSource[nextKey];
+          }
+        }
+      }
+      return to;
+    }
+  });
+}
+
 function collection (_array) {
   _array = _array.slice(0);
   var _records = null,
@@ -68,6 +102,7 @@ function data (_object) {
           continue;
         case 'object':
           if (val instanceof Array) {
+            val = val.slice(0);
             _collections[name] = collection(val);
           }
           else {
@@ -107,7 +142,7 @@ function record (_data) {
   var _scopes = {};
 
   return Object.create(null, {
-
+  
     'values': {
       value: _data.values
     },
@@ -154,13 +189,13 @@ function record (_data) {
   });
 }
 
-function merge (_old, _new) {
+function merge_record (_old, _new) {
   for (var value in _old.values) {
     if (!(value in _new.values)) {
       _new.values[value] = _old.values[value];
     }
   }
-
+  
   for (var scopeName in _old.scopes) {
     if (!(scopeName in _new.scopes)) {
       _new.scopes[scopeName] = _old.scopes[scopeName];
@@ -190,27 +225,54 @@ function merge (_old, _new) {
   return _new;
 }
 
-function model (_record) {
-  var state = { record: _record };
+function model (_object, _onchange) {
+  _object = Object.assign({}, _object);
+
+  var state = { 
+    object: _object,
+    record: record(data(_object))
+  };
 
   return Object.create(null, {
-
-    'initialize': {
-      value: function (object) {
-        state.record = record(data(object));
+  
+    'object': {
+      get: function () {
+        return state.object;
       }
     },
 
-    'merge': {
-      value: function (object) {
-        state.record = merge(state.record, record(data(object)));
-      }
-    },
+    'interface': {
+      value: Object.create(null, {
+      
+        'initialize': {
+          value: function (object) {
+            state.object = Object.assign({}, object);
+            state.record = record(data(state.object));
+            
+            if (_onchange) _onchange();
+          }
+        },
 
-    'record': {
-      value: function () {
-        return state.record['interface'];
-      }
+        'merge': {
+          value: function (object) {
+            var _data, _record;
+
+            _data = Object.assign({}, object);
+            _record = record(data(_data));
+            state.object = Object.assign(state.object, _data);            
+            state.record = merge_record(state.record, _record);              
+              
+            if (_onchange) _onchange();
+          }
+        },
+
+        'record': {
+          value: function () {
+            return state.record['interface'];
+          }
+        }
+        
+      })
     }
 
   });
@@ -468,11 +530,16 @@ function transition_view (next, current, currentRecord, getRecord) {
 function mvc (services, appName, appVersion) {
   var persistentModels = {},
       transientModels = {},
-      cachedViews = viewCache(appName, appVersion);
+      cachedViews = viewCache(appName, appVersion),
+      anonymous,
+      instance,
+      internals,
+      getRecord,
+      transition;
       
-  var anonymous = model(record(data({})));
+  anonymous = model({})['interface'];
   
-  var getRecord = function (view, currentRecord) {
+  getRecord = function (view, currentRecord) {
     var modelName = view.model,
         scopeName = view.scope;
         
@@ -483,19 +550,21 @@ function mvc (services, appName, appVersion) {
         : currentRecord;
   };
 
-  var instance = Object.create(null, {
+  instance = Object.create(null, {
 
     'getModel': {
       value: function (name) {
+        if (!name) return;
+      
         var _model = 
           transientModels[name] || 
           persistentModels[name];
 
         if (!_model) {
-          _model = persistentModels[name] = model(record(data({})));
+          _model = persistentModels[name] = model({}, internals.snapshotState);
         }
 
-        return _model;
+        return _model['interface'];
       }
     },
 
@@ -505,7 +574,7 @@ function mvc (services, appName, appVersion) {
           ? persistentModels
           : transientModels;
 
-        modelStore[name] = model(record(data({})));
+        modelStore[name] = model({}, internals.snapshotState);
       }
     },
 
@@ -536,7 +605,7 @@ function mvc (services, appName, appVersion) {
 
   });
 
-  var internals = {
+  internals = {
   
     attach: function (window) {
       window.addEventListener('popstate', this.extendHistoryTraversal);
@@ -553,7 +622,8 @@ function mvc (services, appName, appVersion) {
     extendHistoryTraversal: function (event) {    
       var state = event.state,
           document = services.document,
-          location = services.location;
+          location = services.location,
+          models = state.transientModels;
 
       if (state && state.__fromMvc === true) {
         var targetView = state.targetView,
@@ -565,6 +635,12 @@ function mvc (services, appName, appVersion) {
           return;
         }
         else {
+          if (typeof models === 'object') {
+            transientModels = {};
+            for (var name in models) {
+              transientModels[name] = model(models[name], internals.snapshotState);
+            }
+          }
           document.title = state.title;
           instance.transitionView(restructured, currentView);
         }
@@ -587,7 +663,6 @@ function mvc (services, appName, appVersion) {
       if (name === 'A' || name === 'AREA') {
         event.preventDefault();      
         transition(
-          services,
           target.href,
           target.title,
           target.view,
@@ -647,7 +722,6 @@ function mvc (services, appName, appVersion) {
         
         event.preventDefault();
         transition(
-          services,
           action,
           null,
           view,
@@ -655,9 +729,88 @@ function mvc (services, appName, appVersion) {
           method,
           sendRequest);
       }
+    },
+    
+    snapshotState: function () {
+      var stashedModels = {};
+      
+      for (var name in transientModels) {
+        stashedModels[name] = transientModels[name].object;
+      }
+      
+      var snapshot = {
+        targetView: history.state.targetView,
+        title: history.state.title,
+        transientModels: stashedModels,
+        __fromMvc: true,
+        __snapshot: true
+      };
+      
+      history.replaceState(snapshot, null);
+    }  
+  
+  };
+  
+  transition = function (href, title, targetView, targetModel, method, sendRequest) {
+    var location = services.location;
+    var history = services.history;
+    var document = services.document;
+    
+    function fallback() {
+      location.assign(href);
+    }
+    
+    function transition(restructuredView, currentView, newTransientModels) {
+      var state = {
+        targetView: targetView,
+        title: title || document.title,
+        __fromMvc: true
+      };
+      
+      history.pushState(state, state.title, href);      
+      transientModels = newTransientModels;
+      document.title = state.title;
+      instance.transitionView(restructuredView, currentView);
+      internals.snapshotState();
+    }
+    
+    var currentView = document.currentView;
+    if (!currentView) return fallback();
+    
+    var restructuredView = document.mvc.restructureView(targetView);
+    if (!restructuredView) return fallback();
+
+    if (targetModel) {      
+      var req = new XMLHttpRequest();
+      req.open(method, href);
+      req.setRequestHeader('Accept', 'multipart/json');
+      req.onload = function() {
+        if (req.status < 200 || req.status > 299) return fallback();
+        
+        var type = req.getResponseHeader('Content-Type');
+        var result = parseMultipartJsonResponse(type, req.responseText);
+        
+        if (!result[targetModel]) return fallback();
+        
+        var newTransientModels = {};
+        for (var name in result) {
+          var _model = model(result[name], internals.snapshotState);
+          newTransientModels[name] = _model;
+        }
+        
+        transition(restructuredView, currentView, newTransientModels);
+      }
+      req.onerror = function() {
+        return fallback();
+      }
+      if (sendRequest) sendRequest(req);
+      else return fallback();
+    }
+    else {
+      transition(restructuredView, currentView, {});
     }
 
-  };
+  }
 
   return {
     instance: instance,
@@ -665,62 +818,6 @@ function mvc (services, appName, appVersion) {
   };
 }
 
-function transition (services, href, title, targetView, targetModel, method, sendRequest) {
-  var location = services.location;
-  var history = services.history;
-  var document = services.document;
-  
-  function fallback() {
-    location.assign(href);
-  }
-  
-  function transition(restructuredView, currentView) {
-    document.mvc.transitionView(restructuredView, currentView);
-    var state = {
-      targetView: targetView,
-      title: title || document.title,
-      __fromMvc: true
-    };
-    history.pushState(state, state.title, href);
-    document.title = state.title;
-  }
-  
-  var currentView = document.currentView;
-  if (!currentView) return fallback();
-  
-  var restructuredView = document.mvc.restructureView(targetView);
-  if (!restructuredView) return fallback();
-
-  if (targetModel) {      
-    var req = new XMLHttpRequest();
-    req.open(method, href);
-    req.setRequestHeader('Accept', 'multipart/json');
-    req.onload = function() {
-      if (req.status < 200 || req.status > 299) return fallback();
-      
-      var type = req.getResponseHeader('Content-Type');
-      var result = parseMultipartJsonResponse(type, req.responseText);
-      
-      if (!result[targetModel]) return fallback();
-      
-      for (var name in result) {
-        var model = document.mvc.getModel(name);
-        model.initialize(result[name]);
-      }
-      
-      transition(restructuredView, currentView);
-    }
-    req.onerror = function() {
-      return fallback();
-    }
-    if (sendRequest) sendRequest(req);
-    else return fallback();
-  }
-  else {
-    transition(restructuredView, currentView);
-  }
-
-}
 function select_descendants (element, select, recurse) {
   var elements = [];
   for (var i = 0; i < element.children.length; i++) {
@@ -1362,6 +1459,16 @@ window.addEventListener('DOMContentLoaded', function(e) {
       return mvcInstance;
     }
   });
+
+  // Find existing current view, if any, and destructure/cache it
+  (function viewCaching() {
+    var currentView = document.currentView;
+    if (!currentView) return;
+    history.replaceState({
+      targetView: mvcInstance.destructureView(currentView),
+      title: document.title
+    }, null);
+  })();
   
   // Register any declared models
   (function modelRegistration() {
@@ -1379,20 +1486,8 @@ window.addEventListener('DOMContentLoaded', function(e) {
       }
     }
   })();
-
-  // Find existing current view, if any, and destructure/cache it
-  (function viewCaching() {
-    var currentView = document.currentView;
-    if (!currentView) return;
-    var name = mvcInstance.destructureView(currentView);
-    var state = {
-      targetView: name,
-      title: document.title,
-      __fromMvc: true
-    };
-    history.replaceState(state, document.title, location.href);
-  })();
   
+  mvcInternal.internals.snapshotState();
   mvcInternal.internals.attach(window);
   
 });})(window, document, history);
