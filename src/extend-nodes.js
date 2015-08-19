@@ -100,16 +100,16 @@ function createNodeDescriptors () {
         }
       },
 
-      'bindNone': {
+      'bindSkip': {
         get: function () {
-          return this.hasAttribute('bindnone');
+          return this.hasAttribute('bindskip');
         },
         set: function (value) {
           if (value === true) {
-            this.setAttribute('bindnone', 'bindnone');
+            this.setAttribute('bindskip', 'bindskip');
           }
           else if (value === false || typeof value === 'undefined') {
-            this.removeAttribute('bindnone');
+            this.removeAttribute('bindskip');
           }
         }
       },

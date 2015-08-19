@@ -691,7 +691,7 @@ describe("mvc", function () {
 
       });
 
-      describe('`bindnone`', function () {
+      describe('`bindskip`', function () {
 
         it('should skip binding for elements and descendants', function () {
           var _model, _view, _branch1, _branch2, _branch3, _element;
@@ -714,7 +714,7 @@ describe("mvc", function () {
           _view.appendChild(_branch2);
 
           _branch3 = _elem('div');
-          _branch3.setAttribute('bindnone', '');
+          _branch3.setAttribute('bindskip', '');
           _element = _elem('div');
           _element.setAttribute('bindtext', 'Hello');
           _branch3.appendChild(_element);

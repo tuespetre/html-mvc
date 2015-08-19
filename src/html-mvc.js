@@ -323,7 +323,7 @@ function inner_views (element) {
 }
 
 function processBindingAttributes (element) {
-  if (element.hasAttribute('bindnone')) {
+  if (element.hasAttribute('bindskip')) {
     return;
   }
   else if (element.hasAttribute('bindtext') || element.hasAttribute('bindhtml')) {
@@ -731,6 +731,8 @@ function mvc (services, appName, appVersion) {
     },
     
     snapshotState: function () {
+      if (!history.state || !history.state.__fromMvc) return;
+
       var stashedModels = {};
       
       for (var name in transientModels) {

@@ -324,7 +324,7 @@ function inner_views (element) {
 }
 
 function processBindingAttributes (element) {
-  if (element.hasAttribute('bindnone')) {
+  if (element.hasAttribute('bindskip')) {
     return;
   }
   else if (element.hasAttribute('bindtext') || element.hasAttribute('bindhtml')) {
@@ -732,6 +732,8 @@ function mvc (services, appName, appVersion) {
     },
     
     snapshotState: function () {
+      if (!history.state || !history.state.__fromMvc) return;
+
       var stashedModels = {};
       
       for (var name in transientModels) {
@@ -874,8 +876,8 @@ function bind_control (element, name, value) {
 
 function bind_attributes (element, record) {
   var pattern = element.tagName === 'VIEW'
-    ? /^\s*bindattr-((?!bindattr|(bindeach|bindtext|bindhtml|bindnone|model|scope|outer|name)\s*$)[A-Za-z0-9_-]+)\s*$/
-    : /^\s*bindattr-((?!bindattr|(bindeach|bindtext|bindhtml|bindnone)\s*$)[A-Za-z0-9_-]+)\s*$/;
+    ? /^\s*bindattr-((?!bindattr|(bindeach|bindtext|bindhtml|bindskip|model|scope|outer|name)\s*$)[A-Za-z0-9_-]+)\s*$/
+    : /^\s*bindattr-((?!bindattr|(bindeach|bindtext|bindhtml|bindskip)\s*$)[A-Za-z0-9_-]+)\s*$/;
 
   for (var i = 0; i < element.attributes.length; i++) {
     var attribute = element.attributes[i];
@@ -949,8 +951,8 @@ function bind_each (element, collection) {
 function bind_element (element, record) {
   var views = [];
   
-  // If 'bindnone', skip processing descendants
-  if (element.bindNone) return;
+  // If 'bindskip', skip processing descendants
+  if (element.bindSkip) return;
   
   // Apply any 'hidden' binding so we know if we can skip descendants
   bind_hidden(element, record);
@@ -1321,16 +1323,16 @@ function createNodeDescriptors () {
         }
       },
 
-      'bindNone': {
+      'bindSkip': {
         get: function () {
-          return this.hasAttribute('bindnone');
+          return this.hasAttribute('bindskip');
         },
         set: function (value) {
           if (value === true) {
-            this.setAttribute('bindnone', 'bindnone');
+            this.setAttribute('bindskip', 'bindskip');
           }
           else if (value === false || typeof value === 'undefined') {
-            this.removeAttribute('bindnone');
+            this.removeAttribute('bindskip');
           }
         }
       },
