@@ -67,7 +67,7 @@ With html-mvc, you mark up document bodies as 'view trees', and you mark up navi
 </body>
 ```
 
-When the document loads, html-mvc will detect the `<view>` child element of the `<body>` and **destructure** it, meaning it will take a deep clone of the top-level `<view>` element and caches its pieces like this:
+When the document loads, html-mvc will detect the `<view>` child element of the `<body>` and **destructure** it, meaning it will take a deep clone of the top-level `<view>` element and cache its pieces like this:
 
 **main-layout**
 ```
@@ -107,6 +107,8 @@ Now, when the client follows the hyperlink in **page-a**, it will look for **pag
 Client-side MVC entails 'hijacking' the browser's history traversal and modifying the document in-place by restructuring a given view and binding a particular model or set of models to the restructured view. By default, the set of models for a given view will be associated with that view's history entry. These models are known as **transient models.** 
 
 Sometimes, it makes sense for a model to be reused across history entries: for example, consider a layout where the navigation bar contains a notification badge which indicates some quantity of unread messages. The list of messages for the inbox (or some other folder) may also contain bits of data that flag a message as unread. As the user reads each message, the count should go down and the message should no longer be flagged as unread, even if the user uses the back button. In this scenario, the model should be a **persistent model**, that is, one which is not associated with a specific history entry.
+
+Along those lines, and the concepts outlined in the section on views, a model will either be considered a **primary model** or a **secondary model**, depending on whether it is the 'main' model exposed by a given URI.
 
 The server will deliver models to the client in one of three ways:
 
