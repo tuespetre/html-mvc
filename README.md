@@ -1,39 +1,56 @@
-# Why.
+# html-mvc
 
-## Are we writing our apps.
-
-### In nothing but Javascript.
-
-It's time to get serious about this. Let's take our lessons learned from Angular, React, and the like and make something more sustainable.
-
-1.  Do whichever of the following applies to you:
-  - Trash your purely client-side MVC app and make it a server-side one, if applicable, or
-  - Strip out all of your duplicated client-side templates and leave only the server ones, or
-  - Wait for further instruction if you haven't already gone off the Javascript deep-end
-2.  Familiarize yourself with the following terms:
-  - Progressive Enhancement
-  - Isomorphism, aka 'shared contour between the client and server'
-  - Target View, aka the main view you want a user to see when they follow a link (whether by navigation or form submission)
-3.  Start using (and helping to develop) **HTML MVC**.
+> A 'polyfill' that activates client-side MVC for your server-rendered MVC application.
 
 ## [See the demo, written with ASP.NET 5](https://github.com/tuespetre/html-mvc-aspnet5)
 
-## What is HTML MVC
+## Conventions
 
-1. It's a `prolly-maybe-idk-fill` designed to provide a generalized solution for a complex problem
-2. It offers the main benefits of using client-side frameworks while letting you think server-side
-3. It offers extension points for any 'super awesome extra enhancements' you may want to do
-4. It's an entirely **progressive enhancement**; if the script fails or the browser won't run it or
-   any script at all, your would **degrade gracefully** to traditional link clicks and form submissions
-5. It's rough on the edges right now
+- **Progressive enhancement** and **graceful degradation**
 
-## How it works
+  Applications developed following the conventions promoted by html-mvc will work as-is
+  from the server without any script, whether the user has disabled scripting, cannot run
+  scripts due to corporate policies or firewalls, does not have scripting at all, or can
+  and does run Javascript but encounters a scripting error.
+  
+- **Content negotiation**
 
-### 1. Views
+  When a client requests a specific representation of a resource from a server, the server
+  must do its best to honor the request. When using html-mvc, your server will be responding
+  to its clients' requests for dynamic resources with at least two different content types: 
+  `text/html` and `multipart/json`.
+  
+- **Decoration over mutation**
 
-#### Markup
+  Server-side templating constructs have traditionally resulted in the server delivering 
+  multiple permutations of a given view to its clients. When using html-mvc, your server
+  will always deliver views that contain all of the necessary markup and bindings needed
+  in order to be cached and re-used by the client.
+  
+- **Make the server work**
 
-To use HTML MVC, you mark up document bodies as 'view trees', and you mark up navigational and submission elements (`a`, `area`, `button[type='submit']`, `form`, `input[type='submit']`, `input[type='image']`) with the name of the **target view** to which they should transition the document.
+  html-mvc introduces some new isomorphic constructs intended to be implemented in various
+  server-side languages and frameworks. Developers shouldn't have to use Node to create
+  an isomorphic web app, and they shouldn't have to repeat themselves either: whether by
+  writing the same template twice or writing the same binding expression twice.
+  
+- **Data-centric binding**
+
+  All of the binding constructs introduced by html-mvc are purely data-centric; this results
+  in a purely declarative binding style where all data manipulation functions have already been
+  called by the time the model is binding to the view.
+  
+## Concepts
+
+### Controllers
+
+With html-mvc, the only controller defined for the client is the client itself. There are plans for various extension points to be added to html-mvc so that custom functionality may be added where needed. As far as the server is concerned, every controller speaks purely in terms of models; whether the model is rendered as a `text/html` view or a `multipart/json` payload is the responsibility of a higher-level abstraction.
+
+### Views
+
+When a client makes a request to the server for a `text/html` representation of a resource, the server will respond by rendering a single **target view**, with one or more 'layout' or **outer views**. The target view and its outer views may each contain any number of additional **inner views**, otherwise known as 'partials' or 'view components'.
+
+With html-mvc, you mark up document bodies as 'view trees', and you mark up navigational and submission elements (`a`, `area`, `button[type='submit']`, `form`, `input[type='submit']`, `input[type='image']`) with the name of the **target view** that would be expected if one were to request a `text/html` representation of the resource identified by the link's `href` or the form's `action`:
 
 **page-a.html**
 ```
@@ -41,7 +58,7 @@ To use HTML MVC, you mark up document bodies as 'view trees', and you mark up na
   <view name="main-layout">
     <h1>My Layout View</h1>
     <view name="page-a" outer="main-layout">
-      <h2>Hello from page B</h2>
+      <h2>Hello from page A</h2>
       <a href="page-b.html" title="Page B" view="page-b">
         Go to page B
       </a>
@@ -50,7 +67,7 @@ To use HTML MVC, you mark up document bodies as 'view trees', and you mark up na
 </body>
 ```
 
-When the document loads, HTML MVC detects the `<view>` child element of the `<body>` and **destructures it**, meaning it takes a deep clone of the `<view>` element and caches its pieces like this:
+When the document loads, html-mvc will detect the `<view>` child element of the `<body>` and **destructure** it, meaning it will take a deep clone of the top-level `<view>` element and caches its pieces like this:
 
 **main-layout**
 ```
@@ -64,94 +81,138 @@ When the document loads, HTML MVC detects the `<view>` child element of the `<bo
 **page-a**
 ```
 <view name="page-a" outer="main-layout">
-  <h2>Hello from page B</h2>
+  <h2>Hello from page A</h2>
   <a href="page-b.html" title="Page B" view="page-b">
     Go to page B
   </a>
 </view>
 ```
 
-When you click the link to `page-b.html`, HTML MVC looks for a cached view named `page-b`. If it can't find it, it simply lets the browser navigate as normal. Otherwise, it tries to **restructure** the cached view by resolving its **inner and outer dependencies** so it can **transition** the **current view**. If it can't restructure the cached view, it lets the browser navigate. But if it can, then it add a new history entry, sets the document title, and transitions the current view.
+Let us assume the client has also already cached **page-b**:
 
-**Transitioning the current view** is similar to how React reconciles component trees. HTML MVC starts from the top, compares the topmost views by name, and then proceeds to recursively compare first-level descendant views, making replacements where needed.
-
-There are certain rules about how view trees must be validly structured in order for them to be successfully destructured or restructured; for the most part though, it maps directly to what we have already been doing at the server MVC-wise, regardless of language.
-
-There is a programmatic API available as well as support underway for HTML imports using a `rel="import view"` relation, which would allow for pre-caching. Also underway is the ability to use the `application-name` and `application-version` meta tags (the second one is not registered or official but makes sense) as identifiers for the view cache, so you can invalidate cached destructured views when you update your app.
-
-### 2. Models & Binding
-
-#### Part 1: Models
-
-With views we got the client to where it can have the same piecemeal templates that the server does, now we need to actually make them useful to the client.
-
-If your server-side framework does not offer a customizable HTML Attribute based binding syntax, or some way of evaluating and transforming a document tree before rendering it to the response, you will have more work cut out for you, but it's still better than the alternative. ASP.NET 5 has a new feature called 'Tag Helpers' that **perfectly** facilitates this.
-
-Models are very simple; just declare a `<script type="application/json">` element, and give it a `model` attribute with the name to use for the model. The contents of the element should be the serialized JSON representation of your model.
-
-Models registered by this declarative API are said to be **persistent**. **Persistent** means the model will be retained between navigations. If the model is not **persistent**, it is instead said to be **transient**, meaning it will be considered a part of the state for a particular history entry only. A good rule of thumb is that the models used by your target views will be transient, while the models used by your layout views should be persistent.
-
-There is an imperative API for defining and working with models as well.
-
-Models are a sort of 'record of records'. See the following excerpt:
-
-```javascript
-document.mvc.defineModel('my-model');
-var model = document.mvc.getModel('my-model');
-model.initialize({ 
-  'Hello': 'World', 
-  'Yeah': { 
-    'What': 'Ok' 
-  },
-  'Items': [
-    { Name: 'One' },
-    { Name: 'Two', Nested: { 'Property': 'Value' } }
-  ]
-});
-
-var record = model.record();
-record.value('Hello') // 'World'
-record.value('Yeah.What') // 'Ok'
-
-var subrecord = record.scope('Yeah');
-subrecord.value('What') // 'Ok'
-
-var items = record.collection('Items');
-items[0].value('Name') // 'One'
-items[1].value('Name') // 'Two'
-items[1].value('Nested.Property') // 'Value'
+**page-b**
+```
+<view name="page-b" outer="main-layout">
+  <h2>Hello from page B</h2>
+  <a href="page-a.html" title="Page A" view="page-a">
+    Go to page A
+  </a>
+</view>
 ```
 
-The expressions by which values may be accessed are useful to know for our next part, 'Binding'.
+Now, when the client follows the hyperlink in **page-a**, it will look for **page-b** in the cache and attempt to resolve its outer view dependencies and any inner view dependencies. If the client is able to successfully restructure the target view with its surrounding tree, it will use the restructured view to transform the current document in-place and add a new entry to the browser's history.
 
-#### Part 2: Binding
+### Models
 
-HTML MVC defines the following binding-related attributes on the `<view>` element:
+Client-side MVC entails 'hijacking' the browser's history traversal and modifying the document in-place by restructuring a given view and binding a particular model or set of models to the restructured view. By default, the set of models for a given view will be associated with that view's history entry. These models are known as **transient models.** 
+
+Sometimes, it makes sense for a model to be reused across history entries: for example, consider a layout where the navigation bar contains a notification badge which indicates some quantity of unread messages. The list of messages for the inbox (or some other folder) may also contain bits of data that flag a message as unread. As the user reads each message, the count should go down and the message should no longer be flagged as unread, even if the user uses the back button. In this scenario, the model should be a **persistent model**, that is, one which is not associated with a specific history entry.
+
+The server will deliver models to the client in one of three ways:
+
+- Pre-bound to a `text/html` response
+- As parts of a `multipart/json` response
+- As embedded data blocks within a `text/html` response
+
+The first mode of delivery is well-understood and not worth rehashing here; the second and third modes require further explanation.
+
+#### Delivering models as parts of a `multipart/json` response
+
+A `multipart/json` response is very similar to a `multipart/mixed` response, except every part of the message is of the content type `application/json`. html-mvc specifically requires the use of at least one MIME type extension parameter for each part:
+
+- `model={model name}`, to indicate which named model the JSON data represents (required)
+- `persistent`, to indicate that the model should be considered persistent
+
+#### As embedded data blocks within a `text/html` response
+
+In order to give the client the raw model data that can be re-used to bind to the view that was initially rendered by the server, the server will render a `<script type="application/json" model="model name">` tag containing a JSON serialization of the model. With html-mvc, the client will automatically process all such tags from an initial server rendering and use their data blocks to register models.
+
+### Binding
+
+html-mvc defines an assortment of binding attributes for HTML elements. Unless otherwise mentioned, the value of each attribute is a **model expression.**
+
+html-mvc defines the following binding-related attributes on the `<view>` element:
 
 - `model`
 - `scope`
 
-These are to be used exclusively of each other; if both are present, 'model' takes priority. 'Scope' maps directly to the code example above during the binding process.
+These are to be used exclusively of each other; if both are present, `model` takes priority.
 
-HTML MVC also extends the HTMLElement prototype with several attributes:
+html-mvc also extends the `HTMLElement` prototype with several attributes, listed in order of application and priority:
+
+- `bindskip`
+
+  This attribute is processed for presence rather than value;
+  when present, the client must skip processing any further bindings
+  for this element and its descendants.
+  
+- `bindattr-hidden`
+ 
+  This binding is evaluated for its value and used to add or remove
+  the `hidden` attribute to an element. After this binding has been
+  processed (or would have been processed, if not present), the client
+  must skip processing any further bindings for this element and its
+  descendants if the element's `hidden` attribute is present, unless
+  the `bindsome` or `bindnone` bindings are specified for this element.
 
 - `bindattr-*`
-- `bindtext`
-- `bindhtml`
-- `bindeach`
+
+  This binding is evaluated for its value and used to set the value of
+  the attribute identified by the wildcard on this element. Expressions
+  that evaluate to `true`, `false`, or `undefined` are processed in terms
+  of attribute presence, while all other values are applied to the attribute's
+  value. The client will also set the `value` and `checked` properties of
+  the element, if the element is a form control.
+
 - `bindchildren`
+
+  This attribute represents an integer between `1` and `Infinity` which is used
+  when destructuring views to determine how many of the child elements should be
+  kepts, or when binding to a collection to determine how many of the child elements
+  should be sampled for each iteration.
+  
+- `bindsome`
+
+  This binding is evaluated for its value. If the value is a collection,
+  each item of the collection will be bound to a set of 1 or more child
+  elements existing in this element, as specified by `bindchildren`. When
+  the binding has completed, all extra child elements will be removed.
+  If the value is not a collection or the value is a collection but the
+  collection is empty, the element's `hidden` attribute will be set and
+  the client will skip processing further bindings for this element and
+  its descendants. If the value is a collection and is not empty, and the
+  `hidden` attribute exists on the element but it was not put there by
+  the `bindattr-hidden` binding, the element's `hidden` attribute will be
+  removed and its other `bindattr-*` bindings will be processed before
+  binding the items of the collection to the children of this element.
+  
 - `bindnone`
 
-`bindattr-*` allows you to bind another attribute of the element to a value from the model. It cannot be used to do things like `bindattr-bindattr-...`, and it cannot affect other binding attributes, even those defined for `<view>`.
+  This binding is evaluated for its value. If the value is a collection,
+  and the collection is empty, and the element's `hidden` attribute exists
+  but was not put there by the `bindattr-hidden` binding, the `hidden` 
+  attribute will be removed, any other `bindattr-*` bindings will be
+  processed, and bindings will be processed for this element's descendants.
+  If the value is not a collection or it is a non-empty collection,
+  the element's `hidden` attribute will be set and the client will skip
+  processing further bindings for this element and its descendants.
+  
+- `bindcount`
 
-`bindnone` instructs HTML MVC to not waste time binding this element or any of its children.
+  This binding is evaluated for its value. If the value is a collection,
+  the number of items in the collection is used to set the `textContent`
+  of this element. Otherwise, the number `0` is used to set the `textContent`
+  of this element. If the client applies this binding it must
+  skip processing any further bindings for this elements and its descendants.
 
-`bindtext` and `bindhtml` bind a value from the model to either `textContent` or `innerHTML`, respectively.
+- `bindtext`
 
-`bindeach` maps to the 'collection' call in the above code example, and `bindchildren` tells HTML MVC whether it should use any more than one element to render each record in the collection.
+  This binding is evaluated for its value, which is then used to set the
+  `textContent` of this element. If the client applies this binding it must
+  skip processing any further bindings for this elements and its descendants.
 
-**The binding process** is initiated by calling `bind(record)` on a `<view>` element. This is done automatically by HTML MVC after a view has been transitioned. It traverses the entire view tree includes the non-view descendants, skipping branches that have been opted out of binding by the `bindnone` attribute or that are `hidden` (after evaluating any `bindattr-hidden` binding.) Because model records are exposed as immutable interfaces, each element is associated with a reference to its last-bound record, and if the record is the same record, the values are guaranteed to be the same and the binding process will carry on with its business.
+- `bindhtml`
 
-### 3. Bringing models and views together
-
-In addition to the `view` and `formview` attributes, there are also `model` and `formmodel` attributes for navigation/submission elements. When they are detected, HTML will first try to relocate and restructure the view as usual, but it will also request a `mime/multipart` response from the server at the target URL, to which the server should respond with a multipart message where each part has a `Content-Type` header of `application/json;model={model-name-here}` (yes, that is valid, it's a MIME type extension parameter.) One of the parts should match the `model` name specified on the element; if not, or if the message is not successful or of the wrong type, navigation or submission will proceed as normal (except in the case of a form POST, where you wouldn't want to submit twice.)
+  This binding is evaluated for its value, which is then used to set the
+  `innerHTML` of this element. If the client applies this binding it must
+  skip processing any further bindings for this elements and its descendants.
