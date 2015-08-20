@@ -1422,7 +1422,7 @@ window.addEventListener('DOMContentLoaded', function(e) {
       if (name) {
         try {
           var result = JSON.parse(script.textContent);
-          mvcInstance.defineModel(name, true);
+          mvcInstance.defineModel(name, script.persistent);
           var model = mvcInstance.getModel(name);
           model.initialize(result);
         } catch (err) { }
