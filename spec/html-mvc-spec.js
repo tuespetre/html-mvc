@@ -81,6 +81,7 @@ describe('form serialization', function () {
 });
 
 describe("mvc", function () {
+  var _testModelName = 'test-model';
   var _mvcInternal;
   var _mvc;
   var _data;
@@ -474,7 +475,7 @@ describe("mvc", function () {
     });
 
     describe('transitioning', function () {
-    
+
       it('replaces differing `view` elements when analyzing the tree', function () {
         var _outer, _view1, _view2, _child1, _child2, _restructured;
 
@@ -501,7 +502,7 @@ describe("mvc", function () {
         expect(_child1.children[0].firstChild).not.toBe(_view2);
         expect(_child1.children[0].firstChild.textContent).toBe('Hello');
       });
-    
+
       it('replaces `view` elements when their L1 descendant counts differ', function () {
         var _frag, _outer, _view1, _view2, _child1, _child2, _restructured;
 
@@ -571,39 +572,39 @@ describe("mvc", function () {
         });
 
       });
-      
+
       describe('`bindcount`', function () {
-      
+
         it('should bind collection count to `textContent`', function () {
           var _model, _view, _child;
-          
-          _model = _mvc.getModel('test-model');
+
+          _model = _mvc.getModel(_testModelName);
           _model.initialize(_data);
           _view = _elem('view');
-          _view.model = 'test-model';
+          _view.model = _testModelName;
           _child = _elem('div');
           _child.bindCount = 'Items';
           _view.appendChild(_child);
           _mvc.bindView(_view);
-          
+
           expect(_child.textContent).toBe('3');
         });
-      
+
         it('should bind 0 to `textContent` for empty or non-existent collections', function () {
           var _model, _view, _child;
-          
-          _model = _mvc.getModel('test-model');
+
+          _model = _mvc.getModel(_testModelName);
           _model.initialize(_data);
           _view = _elem('view');
-          _view.model = 'test-model';
+          _view.model = _testModelName;
           _child = _elem('div');
           _child.bindCount = 'Itemzzz';
           _view.appendChild(_child);
           _mvc.bindView(_view);
-          
+
           expect(_child.textContent).toBe('0');
         });
-      
+
       });
 
       describe('`bindsome`', function () {
@@ -614,7 +615,7 @@ describe("mvc", function () {
 
           _view = _elem('view');
           _view.setAttribute('name', 'test-view');
-          _view.setAttribute('model', 'test-model');
+          _view.setAttribute('model', _testModelName);
           _view.setAttribute('bindchildren', keep);
           _view.setAttribute('bindsome', 'Items');
           for (var i = 0; i < total; i++) {
@@ -624,8 +625,8 @@ describe("mvc", function () {
             _children[i] = _child;
           }
 
-          _mvc.defineModel('test-model');
-          _model = _mvc.getModel('test-model');
+          _mvc.defineModel(_testModelName);
+          _model = _mvc.getModel(_testModelName);
           _model.initialize(_data);
           _mvc.bindView(_view);
           _eaches = _model.record().collection('Items');
@@ -642,7 +643,7 @@ describe("mvc", function () {
 
           _view = _elem('view');
           _view.setAttribute('name', 'test-view');
-          _view.setAttribute('model', 'test-model');
+          _view.setAttribute('model', _testModelName);
           _view.setAttribute('bindchildren', slice);
           _view.setAttribute('bindsome', 'Items');
           for (var i = 0; i < total; i++) {
@@ -652,8 +653,8 @@ describe("mvc", function () {
             _children[i] = _child;
           }
 
-          _mvc.defineModel('test-model');
-          _model = _mvc.getModel('test-model');
+          _mvc.defineModel(_testModelName);
+          _model = _mvc.getModel(_testModelName);
           _model.initialize(_data);
           _mvc.bindView(_view);
           _eaches = _model.record().collection('Items');
@@ -671,7 +672,7 @@ describe("mvc", function () {
 
           _view = _elem('view');
           _view.setAttribute('name', 'test-view');
-          _view.setAttribute('model', 'test-model');
+          _view.setAttribute('model', _testModelName);
           _view.setAttribute('bindchildren', slice);
           _view.setAttribute('bindsome', 'Items');
           for (var i = 0; i < total; i++) {
@@ -681,8 +682,8 @@ describe("mvc", function () {
             _children[i] = _child;
           }
 
-          _mvc.defineModel('test-model');
-          _model = _mvc.getModel('test-model');
+          _mvc.defineModel(_testModelName);
+          _model = _mvc.getModel(_testModelName);
           _model.initialize(_data);
           _mvc.bindView(_view);
           _model.merge({ 'Items': [{ Name: 'Guitar' }] });
@@ -701,7 +702,7 @@ describe("mvc", function () {
 
           _view = _elem('view');
           _view.setAttribute('name', 'test-view');
-          _view.setAttribute('model', 'test-model');
+          _view.setAttribute('model', _testModelName);
           _view.setAttribute('bindchildren', slice);
           _view.setAttribute('bindsome', 'Items');
           for (var i = 0; i < total; i++) {
@@ -711,8 +712,8 @@ describe("mvc", function () {
             _children[i] = _child;
           }
 
-          _mvc.defineModel('test-model');
-          _model = _mvc.getModel('test-model');
+          _mvc.defineModel(_testModelName);
+          _model = _mvc.getModel(_testModelName);
           _model.initialize(_data);
           _mvc.bindView(_view);
           _model.initialize({ 'Items': [{ Name: 'Guitar' }] });
@@ -728,10 +729,10 @@ describe("mvc", function () {
 
           _view = _elem('view');
           _view.setAttribute('name', 'test-view');
-          _view.setAttribute('model', 'test-model');
+          _view.setAttribute('model', _testModelName);
           _view.setAttribute('bindchildren', slice);
           _view.setAttribute('bindsome', 'Itemzzz');
-          
+
           for (var i = 0; i < total; i++) {
             _child = _elem('div');
             _child.setAttribute('bindtext', 'Name');
@@ -739,7 +740,7 @@ describe("mvc", function () {
             _children[i] = _child;
           }
 
-          _model = _mvc.getModel('test-model');
+          _model = _mvc.getModel(_testModelName);
           _model.initialize(_data);
           _mvc.bindView(_view);
 
@@ -751,11 +752,11 @@ describe("mvc", function () {
 
           _view = _elem('view');
           _view.name = 'test-view';
-          _view.model = 'test-model';
+          _view.model = _testModelName;
           _view.bindChildren = slice;
           _view.bindSome = 'Items';
           _view.hidden = true;
-          
+
           for (var i = 0; i < total; i++) {
             _child = _elem('div');
             _child.setAttribute('bindtext', 'Name');
@@ -763,7 +764,7 @@ describe("mvc", function () {
             _children[i] = _child;
           }
 
-          _model = _mvc.getModel('test-model');
+          _model = _mvc.getModel(_testModelName);
           _model.initialize(_data);
           _mvc.bindView(_view);
 
@@ -771,7 +772,7 @@ describe("mvc", function () {
         });
 
       });
-      
+
       describe('`bindnone`', function () {
 
         it('should hide the element and skip binding descendants when the collection is existent and non-empty', function () {
@@ -779,13 +780,13 @@ describe("mvc", function () {
 
           _view = _elem('view');
           _view.name = 'test-view';
-          _view.model = 'test-model';
+          _view.model = _testModelName;
           _view.bindNone = 'Items';
-          _view.hidden = false;          
+          _view.hidden = false;
           _child = _elem('div');
           _child.setAttribute('bindtext', 'Hello');
           _view.appendChild(_child);
-          _model = _mvc.getModel('test-model');
+          _model = _mvc.getModel(_testModelName);
           _model.initialize(_data);
           _mvc.bindView(_view);
 
@@ -797,20 +798,20 @@ describe("mvc", function () {
 
           _view = _elem('view');
           _view.name = 'test-view';
-          _view.model = 'test-model';
+          _view.model = _testModelName;
           _view.bindNone = 'Itemzzz';
-          _view.hidden = true;          
+          _view.hidden = true;
           _child = _elem('div');
           _child.setAttribute('bindtext', 'Hello');
           _view.appendChild(_child);
-          _model = _mvc.getModel('test-model');
+          _model = _mvc.getModel(_testModelName);
           _model.initialize(_data);
           _mvc.bindView(_view);
 
           expect(_view.hidden).toBe(false);
           expect(_view.children[0].textContent).toBe('World');
         });
-      
+
       });
 
       describe('`bindskip`', function () {
@@ -987,12 +988,40 @@ describe("mvc", function () {
 
       });
 
+      describe('`scope`', function () {
+
+        it('should bind scoped values from the parent view\'s current record', function () {
+          var _view, _scoped, _child, _model;
+
+          _model = _mvc.getModel(_testModelName);
+          _model.initialize(_data);
+          {
+            _view = _elem('view');
+            _view.model = _testModelName;
+            {
+              _scoped = _elem('view');
+              _scoped.scope = 'Yeah';
+              {
+                _child = _elem('div');
+                _child.bindText = 'What';
+              }
+              _scoped.appendChild(_child);
+            }
+            _view.appendChild(_scoped);
+          }
+          _mvc.bindView(_view);
+
+          expect(_scoped.textContent).toBe('Ok');
+        });
+
+      });
+
     });
 
   });
 
   describe('hyperlink navigation', function () {
-  
+
     it('should not prevent default when pushState is not available', function () {
       var _link, _event, _services;
 
@@ -1017,7 +1046,7 @@ describe("mvc", function () {
 
       expect(_event.defaultPrevented).toBe(false);
     });
-  
+
     it('should prevent default when pushState is available', function () {
       var _link, _event, _services;
 
@@ -1041,7 +1070,7 @@ describe("mvc", function () {
 
       expect(_event.defaultPrevented).toBe(true);
     });
-  
+
     it('should change window.location.href when view cannot be restructured', function () {
       var _link, _event, _services;
 

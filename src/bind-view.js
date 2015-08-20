@@ -141,7 +141,7 @@ function bind_descendants (element, record) {
       }
     } while (child = child.nextElementSibling);
   }
-  return [];
+  return views;
 }
 
 /* Returns an array of non-hidden L1 descendant views that have yet to be bound */
