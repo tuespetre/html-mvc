@@ -85,6 +85,15 @@ function createNodeDescriptors () {
           }
         }
       },
+      
+      'bindCount': {
+        get: function () {
+          return this.getAttribute('bindcount');
+        },
+        set: function (value) {
+          this.setAttribute('bindcount', value);
+        }
+      },
 
       'bindEach': {
         get: function () {

@@ -148,17 +148,21 @@ function bind_element (element, record) {
   bind_attributes(element, record);
 
   element.boundRecord = record;
-  var bindText, bindHtml, bindEach;
+  var bindText, bindHtml, bindEach, bindCount;
   
-  if (bindText = element.bindText) {
+  if (bindEach = element.bindEach) {
+    var collection = record.collection(bindEach);
+    bind_each(element, collection);
+  }
+  else if (bindCount = element.bindCount) {
+    var collection = record.collection(bindCount);
+    element.textContent = collection.length;
+  }
+  else if (bindText = element.bindText) {
     element.textContent = record.value(bindText);
   }
   else if (bindHtml = element.bindHtml) {
     element.innerHTML = record.value(bindHtml);
-  }
-  else if (bindEach = element.bindEach) {
-    var collection = record.collection(bindEach);
-    bind_each(element, collection);
   }
   else {
     var child = element.children[0];

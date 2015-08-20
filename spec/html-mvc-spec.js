@@ -571,6 +571,40 @@ describe("mvc", function () {
         });
 
       });
+      
+      describe('`bindcount`', function () {
+      
+        it('should bind collection count to `textContent`', function () {
+          var _model, _view, _child;
+          
+          _model = _mvc.getModel('test-model');
+          _model.initialize(_data);
+          _view = _elem('view');
+          _view.model = 'test-model';
+          _child = _elem('div');
+          _child.bindCount = 'Items';
+          _view.appendChild(_child);
+          _mvc.bindView(_view);
+          
+          expect(_child.textContent).toBe('3');
+        });
+      
+        it('should bind 0 to `textContent` for empty or non-existent collections', function () {
+          var _model, _view, _child;
+          
+          _model = _mvc.getModel('test-model');
+          _model.initialize(_data);
+          _view = _elem('view');
+          _view.model = 'test-model';
+          _child = _elem('div');
+          _child.bindCount = 'Itemzzz';
+          _view.appendChild(_child);
+          _mvc.bindView(_view);
+          
+          expect(_child.textContent).toBe('0');
+        });
+      
+      });
 
       describe('`bindeach`', function () {
 
