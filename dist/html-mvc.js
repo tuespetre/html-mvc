@@ -1409,7 +1409,8 @@ window.addEventListener('DOMContentLoaded', function(e) {
     if (!currentView) return;
     history.replaceState({
       targetView: mvcInstance.destructureView(currentView),
-      title: document.title
+      title: document.title,
+      __fromMvc: true
     }, null);
   })();
   
