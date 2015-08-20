@@ -852,9 +852,9 @@ describe("mvc", function () {
 
       });
 
-      describe('`bindattr-hidden` and `hidden`', function () {
+      describe('`bindattr-hidden`', function () {
 
-        it('should skip binding for elements and descendants', function () {
+        it('should skip binding for elements and descendants when evaluated as `true`', function () {
           var _model, _view, _branch1, _branch2, _element;
 
           _mvc.defineModel('test');

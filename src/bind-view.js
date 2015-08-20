@@ -54,8 +54,8 @@ function bind_control (element, name, value) {
 
 function bind_attributes (element, record) {
   var pattern = element.tagName === 'VIEW'
-    ? /^\s*bindattr-((?!bindattr|(bindsome|bindtext|bindhtml|bindskip|model|scope|outer|name)\s*$)[A-Za-z0-9_-]+)\s*$/
-    : /^\s*bindattr-((?!bindattr|(bindsome|bindtext|bindhtml|bindskip)\s*$)[A-Za-z0-9_-]+)\s*$/;
+    ? /^\s*bindattr-((?!bindattr|(bindsome|bindnone|bindcount|bindtext|bindhtml|bindskip|model|scope|outer|name)\s*$)[A-Za-z0-9_-]+)\s*$/
+    : /^\s*bindattr-((?!bindattr|(bindsome|bindnone|bindcount|bindtext|bindhtml|bindskip)\s*$)[A-Za-z0-9_-]+)\s*$/;
 
   for (var i = 0; i < element.attributes.length; i++) {
     var attribute = element.attributes[i];
