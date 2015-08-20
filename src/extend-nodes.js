@@ -1,131 +1,76 @@
+function booleanAttributeDescriptor (name) {
+  return {
+    get: function () {
+      return this.hasAttribute(name);
+    },
+    set: function (value) {
+      if (value === true) {
+        this.setAttribute(name, '');
+      }
+      else if (value === false || typeof value === 'undefined') {
+        this.removeAttribute(name);
+      }
+    }
+  };
+};
+
+function stringAttributeDescriptor (name) {
+  return {
+    get: function () {
+      return this.getAttribute(name);
+    },
+    set: function (value) {
+      if (typeof value === 'undefined') {
+        this.removeAttribute(name);
+      }
+      else {
+        this.setAttribute(name, value);
+      }
+    }
+  };
+};
+
 function createNodeDescriptors () {
 
   return {
   
     anchor_area_form: {
 
-      'view': {
-        get: function () {
-          return this.getAttribute('view');
-        },
-        set: function (value) {
-          return this.setAttribute('view', value);
-        }
-      },
+      'view': stringAttributeDescriptor('view'),
 
-      'model': {
-        get: function () {
-          return this.getAttribute('model');
-        },
-        set: function (value) {
-          return this.setAttribute('model', value);
-        }
-      }
+      'model': stringAttributeDescriptor('model')
 
     },
 
     input_button: {
 
-      'formview': {
-        get: function () {
-          return this.getAttribute('formview');
-        },
-        set: function (value) {
-          return this.setAttribute('view', value);
-        }
-      },
+      'formview': stringAttributeDescriptor('formview'),
 
-      'formmodel': {
-        get: function () {
-          return this.getAttribute('formmodel');
-        },
-        set: function (value) {
-          return this.setAttribute('model', value);
-        }
-      }
+      'formmodel': stringAttributeDescriptor('formmodel')
 
     },
 
     script: {
 
-      'model': {
-        get: function () {
-          return this.getAttribute('model');
-        }
-      }
+      'model': stringAttributeDescriptor('model'),
+      
+      'persistent': booleanAttributeDescriptor('persistent')
       
     },
 
     element: {
 
-      'bindText': {
-        get: function () {
-          return this.getAttribute('bindtext');
-        },
-        set: function (value) {
-          if (typeof value === 'undefined') {
-            this.removeAttribute('bindtext');
-          }
-          else {
-            this.setAttribute('bindtext', value);
-          }
-        }
-      },
+      'bindText': stringAttributeDescriptor('bindtext'),
 
-      'bindHtml': {
-        get: function () {
-          return this.getAttribute('bindhtml');
-        },
-        set: function (value) {
-          if (typeof value === 'undefined') {
-            this.removeAttribute('bindhtml');
-          }
-          else {
-            this.setAttribute('bindhtml', value);
-          }
-        }
-      },
+      'bindHtml': stringAttributeDescriptor('bindhtml'),
       
-      'bindCount': {
-        get: function () {
-          return this.getAttribute('bindcount');
-        },
-        set: function (value) {
-          this.setAttribute('bindcount', value);
-        }
-      },
+      'bindCount': stringAttributeDescriptor('bindcount'),
       
-      'bindSome': {
-        get: function () {
-          return this.getAttribute('bindsome');
-        },
-        set: function (value) {
-          this.setAttribute('bindsome', value);
-        }
-      },
+      'bindSome': stringAttributeDescriptor('bindsome'),
       
-      'bindNone': {
-        get: function () {
-          return this.getAttribute('bindnone');
-        },
-        set: function (value) {
-          this.setAttribute('bindnone', value);
-        }
-      },
+      'bindNone': stringAttributeDescriptor('bindnone'),
 
-      'bindSkip': {
-        get: function () {
-          return this.hasAttribute('bindskip');
-        },
-        set: function (value) {
-          if (value === true) {
-            this.setAttribute('bindskip', 'bindskip');
-          }
-          else if (value === false || typeof value === 'undefined') {
-            this.removeAttribute('bindskip');
-          }
-        }
-      },
+      'bindSkip': booleanAttributeDescriptor('bindskip'),
 
       'bindChildren': {
         get: function () {
@@ -144,61 +89,13 @@ function createNodeDescriptors () {
 
     view: {
 
-      'name': {
-        get: function () {
-          return this.getAttribute('name');
-        },
-        set: function(value) {
-          if (typeof value === 'undefined') {
-            this.removeAttribute('name');
-          }
-          else {
-            this.setAttribute('name', value);
-          }
-        }
-      },
+      'name': stringAttributeDescriptor('name'),
 
-      'outer': {
-        get: function () {
-          return this.getAttribute('outer');
-        },
-        set: function(value) {
-          if (typeof value === 'undefined') {
-            this.removeAttribute('outer');
-          }
-          else {
-            this.setAttribute('outer', value);
-          }
-        }
-      },
+      'outer': stringAttributeDescriptor('outer'),
 
-      'model': {
-        get: function () {
-          return this.getAttribute('model');
-        },
-        set: function(value) {
-          if (typeof value === 'undefined') {
-            this.removeAttribute('model');
-          }
-          else {
-            this.setAttribute('model', value);
-          }
-        }
-      },
+      'model': stringAttributeDescriptor('model'),
 
-      'scope': {
-        get: function () {
-          return this.getAttribute('scope');
-        },
-        set: function(value) {
-          if (typeof value === 'undefined') {
-            this.removeAttribute('scope');
-          }
-          else {
-            this.setAttribute('scope', value);
-          }
-        }
-      }
+      'scope': stringAttributeDescriptor('scope')
 
     },
 
@@ -218,6 +115,6 @@ function createNodeDescriptors () {
 
     }
   
-  }
+  };
 
 };
