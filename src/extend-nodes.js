@@ -94,18 +94,22 @@ function createNodeDescriptors () {
           this.setAttribute('bindcount', value);
         }
       },
-
-      'bindEach': {
+      
+      'bindSome': {
         get: function () {
-          return this.getAttribute('bindeach');
+          return this.getAttribute('bindsome');
         },
         set: function (value) {
-          if (typeof value === 'undefined') {
-            this.removeAttribute('bindeach');
-          }
-          else {
-            this.setAttribute('bindeach', value);
-          }
+          this.setAttribute('bindsome', value);
+        }
+      },
+      
+      'bindNone': {
+        get: function () {
+          return this.getAttribute('bindnone');
+        },
+        set: function (value) {
+          this.setAttribute('bindnone', value);
         }
       },
 

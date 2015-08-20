@@ -876,8 +876,8 @@ function bind_control (element, name, value) {
 
 function bind_attributes (element, record) {
   var pattern = element.tagName === 'VIEW'
-    ? /^\s*bindattr-((?!bindattr|(bindeach|bindtext|bindhtml|bindskip|model|scope|outer|name)\s*$)[A-Za-z0-9_-]+)\s*$/
-    : /^\s*bindattr-((?!bindattr|(bindeach|bindtext|bindhtml|bindskip)\s*$)[A-Za-z0-9_-]+)\s*$/;
+    ? /^\s*bindattr-((?!bindattr|(bindsome|bindtext|bindhtml|bindskip|model|scope|outer|name)\s*$)[A-Za-z0-9_-]+)\s*$/
+    : /^\s*bindattr-((?!bindattr|(bindsome|bindtext|bindhtml|bindskip)\s*$)[A-Za-z0-9_-]+)\s*$/;
 
   for (var i = 0; i < element.attributes.length; i++) {
     var attribute = element.attributes[i];
@@ -892,6 +892,7 @@ function bind_attributes (element, record) {
 
 function bind_hidden (element, record) {
   var bindHidden = element.getAttribute('bindattr-hidden');
+  var didMakeHidden = false;
   if (bindHidden !== null) {
     var val = record.value(bindHidden);
     if (val === false || typeof val === 'undefined') {
@@ -899,8 +900,10 @@ function bind_hidden (element, record) {
     }
     else {
       element.setAttribute('hidden', val);
+      didMakeHidden = true;
     }
   }
+  return didMakeHidden;
 }
 
 function bind_each (element, collection) {
@@ -947,34 +950,65 @@ function bind_each (element, collection) {
   }
 }
 
+function bind_descendants (element, record) {
+  var child = element.children[0];
+  var views = [];
+  if (child) {
+    do {
+      if (is_view(child)) {      
+        views.push(child);
+      }
+      else {
+        views.push.apply(views, bind_element(child, record));
+      }
+    } while (child = child.nextElementSibling);
+  }
+  return [];
+}
+
 /* Returns an array of non-hidden L1 descendant views that have yet to be bound */
 function bind_element (element, record) {
   var views = [];
   
-  // If 'bindskip', skip processing descendants
-  if (element.bindSkip) return;
+  // If 'bindskip', skip processing bindings
+  if (element.bindSkip) return [];
   
-  // Apply any 'hidden' binding so we know if we can skip descendants
-  bind_hidden(element, record);
-  if (element.hidden) return;
+  // Apply any 'hidden' binding so we know if we can skip other bindings
+  if (bind_hidden(element, record)) return [];
 
   // If it's a view and we've already bound it, crawl through
   // descendants just to find L1 inner views
   if (is_view(element) && record === element.boundRecord) {
     return select_descendants(element, is_view, 
       function recurse (element) {
-        return !element.hidden && !element.bindEach;
+        return !element.hidden && !element.bindSome;
       });
   }
   
   bind_attributes(element, record);
 
   element.boundRecord = record;
-  var bindText, bindHtml, bindEach, bindCount;
+  var bindText, bindHtml, bindSome, bindNone, bindCount;
   
-  if (bindEach = element.bindEach) {
-    var collection = record.collection(bindEach);
-    bind_each(element, collection);
+  if (bindSome = element.bindSome) {
+    var collection = record.collection(bindSome);
+    if (collection.length) {
+      bind_each(element, collection);
+      element.hidden = false;
+    }
+    else {
+      element.hidden = true;
+    }
+  }
+  else if (bindNone = element.bindNone) {
+    var collection = record.collection(bindNone);
+    if (!collection.length) {
+      views.push.apply(views, bind_descendants(element, record));
+      element.hidden = false;
+    }
+    else {
+      element.hidden = true;
+    }
   }
   else if (bindCount = element.bindCount) {
     var collection = record.collection(bindCount);
@@ -987,17 +1021,7 @@ function bind_element (element, record) {
     element.innerHTML = record.value(bindHtml);
   }
   else {
-    var child = element.children[0];
-    if (child) {
-      do {
-        if (is_view(child)) {      
-          views.push(child);
-        }
-        else {
-          views.push.apply(views, bind_element(child, record));
-        }
-      } while (child = child.nextElementSibling);
-    }
+    views.push.apply(views, bind_descendants(element, record));
   }
   
   return views;
@@ -1321,18 +1345,22 @@ function createNodeDescriptors () {
           this.setAttribute('bindcount', value);
         }
       },
-
-      'bindEach': {
+      
+      'bindSome': {
         get: function () {
-          return this.getAttribute('bindeach');
+          return this.getAttribute('bindsome');
         },
         set: function (value) {
-          if (typeof value === 'undefined') {
-            this.removeAttribute('bindeach');
-          }
-          else {
-            this.setAttribute('bindeach', value);
-          }
+          this.setAttribute('bindsome', value);
+        }
+      },
+      
+      'bindNone': {
+        get: function () {
+          return this.getAttribute('bindnone');
+        },
+        set: function (value) {
+          this.setAttribute('bindnone', value);
         }
       },
 

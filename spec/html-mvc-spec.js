@@ -606,7 +606,7 @@ describe("mvc", function () {
       
       });
 
-      describe('`bindeach`', function () {
+      describe('`bindsome`', function () {
 
         it('should bind records to elements', function () {
           var _model, _record, _view, _child, _children = [],
@@ -616,7 +616,7 @@ describe("mvc", function () {
           _view.setAttribute('name', 'test-view');
           _view.setAttribute('model', 'test-model');
           _view.setAttribute('bindchildren', keep);
-          _view.setAttribute('bindeach', 'Items');
+          _view.setAttribute('bindsome', 'Items');
           for (var i = 0; i < total; i++) {
             _child = _elem('div');
             _child.setAttribute('bindtext', 'Name');
@@ -644,7 +644,7 @@ describe("mvc", function () {
           _view.setAttribute('name', 'test-view');
           _view.setAttribute('model', 'test-model');
           _view.setAttribute('bindchildren', slice);
-          _view.setAttribute('bindeach', 'Items');
+          _view.setAttribute('bindsome', 'Items');
           for (var i = 0; i < total; i++) {
             _child = _elem('div');
             _child.setAttribute('bindtext', 'Name');
@@ -673,7 +673,7 @@ describe("mvc", function () {
           _view.setAttribute('name', 'test-view');
           _view.setAttribute('model', 'test-model');
           _view.setAttribute('bindchildren', slice);
-          _view.setAttribute('bindeach', 'Items');
+          _view.setAttribute('bindsome', 'Items');
           for (var i = 0; i < total; i++) {
             _child = _elem('div');
             _child.setAttribute('bindtext', 'Name');
@@ -703,7 +703,7 @@ describe("mvc", function () {
           _view.setAttribute('name', 'test-view');
           _view.setAttribute('model', 'test-model');
           _view.setAttribute('bindchildren', slice);
-          _view.setAttribute('bindeach', 'Items');
+          _view.setAttribute('bindsome', 'Items');
           for (var i = 0; i < total; i++) {
             _child = _elem('div');
             _child.setAttribute('bindtext', 'Name');
@@ -723,6 +723,94 @@ describe("mvc", function () {
           expect(_view.children[1].textContent).toBe('Guitar');
         });
 
+        it('should hide the element when the collection is non-existent or empty', function () {
+          var _model, _record, _view, _child, _children = [], slice = 1, total = 3;
+
+          _view = _elem('view');
+          _view.setAttribute('name', 'test-view');
+          _view.setAttribute('model', 'test-model');
+          _view.setAttribute('bindchildren', slice);
+          _view.setAttribute('bindsome', 'Itemzzz');
+          
+          for (var i = 0; i < total; i++) {
+            _child = _elem('div');
+            _child.setAttribute('bindtext', 'Name');
+            _view.appendChild(_child);
+            _children[i] = _child;
+          }
+
+          _model = _mvc.getModel('test-model');
+          _model.initialize(_data);
+          _mvc.bindView(_view);
+
+          expect(_view.hidden).toBe(true);
+        });
+
+        it('should un-hide the element when the collection is existent and non-empty', function () {
+          var _model, _record, _view, _child, _children = [], slice = 1, total = 3;
+
+          _view = _elem('view');
+          _view.name = 'test-view';
+          _view.model = 'test-model';
+          _view.bindChildren = slice;
+          _view.bindSome = 'Items';
+          _view.hidden = true;
+          
+          for (var i = 0; i < total; i++) {
+            _child = _elem('div');
+            _child.setAttribute('bindtext', 'Name');
+            _view.appendChild(_child);
+            _children[i] = _child;
+          }
+
+          _model = _mvc.getModel('test-model');
+          _model.initialize(_data);
+          _mvc.bindView(_view);
+
+          expect(_view.hidden).toBe(false);
+        });
+
+      });
+      
+      describe('`bindnone`', function () {
+
+        it('should hide the element and skip binding descendants when the collection is existent and non-empty', function () {
+          var _model, _record, _view, _child, _children = [], slice = 1, total = 3;
+
+          _view = _elem('view');
+          _view.name = 'test-view';
+          _view.model = 'test-model';
+          _view.bindNone = 'Items';
+          _view.hidden = false;          
+          _child = _elem('div');
+          _child.setAttribute('bindtext', 'Hello');
+          _view.appendChild(_child);
+          _model = _mvc.getModel('test-model');
+          _model.initialize(_data);
+          _mvc.bindView(_view);
+
+          expect(_view.hidden).toBe(true);
+        });
+
+        it('should un-hide the element and bind descendants when the collection is non-existent or empty', function () {
+          var _model, _view, _child;
+
+          _view = _elem('view');
+          _view.name = 'test-view';
+          _view.model = 'test-model';
+          _view.bindNone = 'Itemzzz';
+          _view.hidden = true;          
+          _child = _elem('div');
+          _child.setAttribute('bindtext', 'Hello');
+          _view.appendChild(_child);
+          _model = _mvc.getModel('test-model');
+          _model.initialize(_data);
+          _mvc.bindView(_view);
+
+          expect(_view.hidden).toBe(false);
+          expect(_view.children[0].textContent).toBe('World');
+        });
+      
       });
 
       describe('`bindskip`', function () {
